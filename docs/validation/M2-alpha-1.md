@@ -18,10 +18,12 @@ Data: 2026-08-24
 - `npm run test:smoke:m2`: Campaign → Link → persistência → filtro → QR → redirect aprovado.
 - Controles específicos: stale write de Campaign retorna 409; usuário externo recebe 404 ao solicitar QR.
 - `npm audit --omit=dev`: zero vulnerabilidades conhecidas nas dependências de produção.
+- O hardening do toolchain removeu todos os 15 advisories altos; restam quatro moderados, todos herdados do loader interno do `drizzle-kit` e sem correção compatível não-breaking.
 
 ## Falhas e correções
 
 - A execução inicial do servidor com PTY falhou por acesso negado ao `pwsh` do WindowsApps. O servidor foi iniciado com Windows PowerShell explícito e os dois smokes concluíram sem erro de aplicação.
+- O upgrade de Vite expôs uma corrida no plugin de empacotamento: ambientes concorrentes removiam `dist/.openai` durante a cópia. A etapa foi serializada, os imports do config foram adaptados ao loader nativo e build + dois smokes passaram novamente.
 - O navegador controlável permanece indisponível (`agent.browsers.list()` vazio); inspeção visual desktop/mobile continua aberta e impede marcar as tarefas de interface como concluídas.
 
 ## Gates ainda abertos
