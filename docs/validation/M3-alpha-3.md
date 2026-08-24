@@ -28,6 +28,12 @@ Data: 24 de agosto de 2026
 - Reconciliação: 3 cliques, 1 sessão, 66,7% de cobertura, país presente, idioma `pt-BR`, iOS e Safari.
 - Controles negativos: relatório cross-Workspace 403, Link externo 404, período inválido 400 e GPC/DNT respeitados.
 
+## Evidência remota
+
+- Vercel deployment `dpl_bYkShfA6AiUJFLkk7TCjf4AcVCKm`: Ready e associado ao alias público.
+- Smoke no domínio final: jornada completa aprovada com 3 cliques, 1 sessão, 66,7% de cobertura e audiência minimizada reconciliada.
+- GitHub Actions run `32768538074`: lint, build, 14 testes e smoke PostgreSQL aprovados em 1m10s.
+
 ## Estado do gate
 
-Validação remota no domínio final e inspeção visual controlada permanecem abertas até a publicação. O milestone M3 continua ativo porque volume representativo, retenção e materialização ainda não foram concluídos.
+A validação remota foi concluída. A inspeção visual controlada permanece aberta porque nenhum navegador controlável está disponível nesta sessão. O milestone M3 continua ativo porque volume representativo, retenção e materialização ainda não foram concluídos.

@@ -5,16 +5,18 @@ type Phase = { id: string; code: string; title: string; intent: string; mileston
 const task = (title: string, detail: string, status: Status = "queued", evidence?: string, blocker?: string): Task => ({ title, detail, status, evidence, blocker });
 
 export const project = {
-  release: "0.3.0-alpha.3 candidate", environment: "Vercel + Railway · alpha 2 público, alpha 3 validado localmente", commit: "m3-analytics · candidato",
+  release: "0.3.0-alpha.3", environment: "Vercel + Railway · público e operacional", commit: "main · 011a867 publicado",
   liveUrl: "https://mira-link-intelligence.vercel.app",
-  updatedIso: "2026-08-24T16:28:49-03:00", updatedLabel: "24 ago 2026 · 16:28 BRT",
+  updatedIso: "2026-08-24T16:31:46-03:00", updatedLabel: "24 ago 2026 · 16:31 BRT",
   currentFocus: "Milestone 3 · Analytics de decisão",
-  currentDetail: "A candidata alpha 3 adiciona país/região aproximados, idioma, sistema e navegador minimizados; IP, user-agent bruto, cidade e coordenadas permanecem fora do banco.",
+  currentDetail: "A alpha 3 está ao vivo com país/região aproximados, idioma, sistema e navegador minimizados; IP, user-agent bruto, cidade e coordenadas permanecem fora do banco.",
   currentGate: "inspeção visual + consentimento e controles do titular",
   validations: [
+    { status: "done", title: "M3 alpha 3 publicado", detail: "Commit 011a867 recebeu estado Ready no Vercel e assumiu o alias público definitivo.", time: "24 ago" },
+    { status: "done", title: "Audiência minimizada remota", detail: "Domínio final reconciliou três cliques com país, pt-BR, iOS e Safari; sessão, GPC/DNT e isolamento continuaram aprovados.", time: "24 ago" },
+    { status: "done", title: "Pipeline alpha 3 aprovado", detail: "GitHub Actions executou lint, migration-aware build, 14 testes e smoke PostgreSQL em 1m10s.", time: "24 ago" },
     { status: "done", title: "Contexto de audiência local", detail: "Três cliques foram reconciliados com país, pt-BR, iOS e Safari sem persistir IP ou user-agent bruto.", time: "24 ago" },
     { status: "done", title: "Regressão alpha 3 local", detail: "Build, lint, 14 testes, smoke completo no Railway e auditoria de produção com zero vulnerabilidades passaram.", time: "24 ago" },
-    { status: "active", title: "Publicação alpha 3", detail: "Candidata validada localmente; deploy Git, smoke remoto e atualização final do alias estão em execução.", time: "24 ago" },
     { status: "done", title: "M3 alpha 2 publicado", detail: "Commit 87cdf2e recebeu estado Ready no Vercel e atualizou o alias público da Mira.", time: "24 ago" },
     { status: "done", title: "Sessão privacy-safe remota", detail: "Domínio final reconciliou três cliques, uma sessão, 66,7% de cobertura e opt-out GPC/DNT.", time: "24 ago" },
     { status: "done", title: "Pipeline alpha 2 aprovado", detail: "GitHub Actions executou migration-aware build, 12 testes e smoke PostgreSQL em 1m17s.", time: "24 ago" },
