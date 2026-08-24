@@ -6,18 +6,23 @@ import { tokenHash, type ChatGPTUser } from "./chatgpt-auth";
 
 const SESSION_TTL = 30 * 24 * 60 * 60 * 1000;
 
-export async function enforceAuthRateLimit(action: "login" | "register", ip: string): Promise<void> {
-  await ensurePlatformSchema();
-  const now = Date.now();
-  const windowMs = action === "login" ? 15 * 60_000 : 60 * 60_000;
-  const limit = action === "login" ? 10 : 5;
-  const key = tokenHash(`${action}:${ip || "unknown"}`);
-  const rows = await rawQuery<{ attempts: number; window_started_at: number }>(`INSERT INTO auth_rate_limits (key, attempts, window_started_at, updated_at)
+async function incrementRateLimit(key: string, windowMs: number, limit: number, now: number): Promise<void> {
+  const rows = await rawQuery<{ attempts: number }>(`INSERT INTO auth_rate_limits (key, attempts, window_started_at, updated_at)
     VALUES (?, 1, ?, ?) ON CONFLICT (key) DO UPDATE SET
     attempts = CASE WHEN auth_rate_limits.window_started_at < ? THEN 1 ELSE auth_rate_limits.attempts + 1 END,
     window_started_at = CASE WHEN auth_rate_limits.window_started_at < ? THEN ? ELSE auth_rate_limits.window_started_at END,
-    updated_at = ? RETURNING attempts, window_started_at`, [key, now, now, now - windowMs, now - windowMs, now, now]);
-  if (Number(rows[0]?.attempts ?? 1) > limit) throw new Error("Muitas tentativas. Aguarde alguns minutos antes de tentar novamente.");
+    updated_at = ? RETURNING attempts`, [key, now, now, now - windowMs, now - windowMs, now, now]);
+  if (Number(rows[0]?.attempts ?? 1) > limit) throw new Error("AUTH_RATE_LIMIT");
+}
+
+export async function enforceAuthRateLimit(action: "login" | "register", ip: string, accountHint: string): Promise<void> {
+  await ensurePlatformSchema();
+  const now = Date.now();
+  const windowMs = action === "login" ? 15 * 60_000 : 60 * 60_000;
+  const normalizedIp = ip || "unknown";
+  const normalizedAccount = accountHint.trim().toLowerCase().slice(0, 254) || "unknown";
+  await incrementRateLimit(tokenHash(`${action}:account:${normalizedIp}:${normalizedAccount}`), windowMs, action === "login" ? 10 : 5, now);
+  await incrementRateLimit(tokenHash(`${action}:network:${normalizedIp}`), windowMs, action === "login" ? 60 : 30, now);
 }
 
 export async function registerAccount(input: { email: string; password: string; name: string }): Promise<{ user: ChatGPTUser; token: string }> {

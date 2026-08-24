@@ -5,13 +5,15 @@ type Phase = { id: string; code: string; title: string; intent: string; mileston
 const task = (title: string, detail: string, status: Status = "queued", evidence?: string, blocker?: string): Task => ({ title, detail, status, evidence, blocker });
 
 export const project = {
-  release: "0.2.0-alpha.4", environment: "Vercel + Railway · público e operacional", commit: "main · 42b3e2b publicado",
+  release: "0.3.0-alpha.1", environment: "Vercel + Railway · candidata em validação", commit: "m3-analytics · candidata",
   liveUrl: "https://mira-link-intelligence.vercel.app",
-  updatedIso: "2026-08-24T15:48:00-03:00", updatedLabel: "24 ago 2026 · 15:48 BRT",
-  currentFocus: "Milestone 2 · Estabilização pública",
-  currentDetail: "Alpha 4 está ao vivo com autenticação própria, Next.js no Vercel e PostgreSQL Railway; a evolução funcional retorna ao M2/M3 depois do gate visual.",
-  currentGate: "inspeção visual desktop/mobile + recuperação de conta",
+  updatedIso: "2026-08-24T16:06:00-03:00", updatedLabel: "24 ago 2026 · 16:06 BRT",
+  currentFocus: "Milestone 3 · Analytics de decisão",
+  currentDetail: "Relatório comparativo e Link Inspector funcionam contra eventos reais; a candidata passa agora por publicação e validação remota.",
+  currentGate: "deploy + smoke remoto + inspeção visual desktop/mobile",
   validations: [
+    { status: "done", title: "Analytics reconciliado localmente", detail: "Evento real apareceu em série, origem, dispositivo, Link, Campaign e Inspector com a mesma contagem.", time: "24 ago" },
+    { status: "done", title: "Controles analíticos", detail: "Período inválido 400, relatório cross-Workspace 403 e Link externo 404 foram confirmados contra o Railway.", time: "24 ago" },
     { status: "done", title: "Deploy Git em produção", detail: "Push do commit 42b3e2b no main acionou o Vercel e recebeu estado Ready no alias público definitivo.", time: "24 ago" },
     { status: "done", title: "Smoke remoto público", detail: "A jornada completa foi repetida em mira-link-intelligence.vercel.app; 302 e click persistido, QR, DNS, sessão e isolamento passaram.", time: "24 ago" },
     { status: "done", title: "Pipeline remoto aprovado", detail: "GitHub Actions executou install, lint, build, 8 testes e smoke persistente com PostgreSQL em 1m02s.", time: "24 ago" },
@@ -97,11 +99,11 @@ export const phases: Phase[] = [
   ]},
   { id: "intelligence", code: "Fase 2", title: "Inteligência de tráfego", intent: "Transformar eventos confiáveis em entendimento, comparação e ação.", milestones: [
     { id: "m3", code: "M3", release: "Release 0.3.0", title: "Analytics de decisão", outcome: "O usuário entende o que mudou, por quê e onde agir.", exitCriteria: "Métricas reconciliadas, filtros temporais, comparação e drill-down testados com volume representativo.", tasks: [
-      task("Pipeline analítico", "Agregações, retenção, reprocessamento e reconciliação de contagens."),
-      task("Tráfego e audiência", "Cliques, visitantes, sessões, origem, geografia aproximada e tecnologia."),
-      task("Comparações temporais", "Período anterior, tendências, deltas explicáveis e mudanças."),
-      task("Qualidade de tráfego", "Humanos, bots conhecidos, suspeitos, repetições e confiança."),
-      task("Link Inspector", "Performance, routing, QR, UTM, saúde e histórico organizados."),
+      task("Pipeline analítico", "Agregações, retenção, reprocessamento e reconciliação de contagens.", "active", "Consultas atuais reconciliam eventos reais em todas as dimensões; materialização, reprocessamento e escala continuam abertos."),
+      task("Tráfego e audiência", "Cliques, visitantes, sessões, origem, geografia aproximada e tecnologia.", "active", "Cliques, referrer e classe de dispositivo estão integrados; visitantes, sessões e geografia ainda não são inferidos."),
+      task("Comparações temporais", "Período anterior, tendências, deltas explicáveis e mudanças.", "active", "Janelas equivalentes de 7/30/90 dias, série, deltas e estados sem base foram executados contra PostgreSQL."),
+      task("Qualidade de tráfego", "Humanos, bots conhecidos, suspeitos, repetições e confiança.", "active", "Automação conhecida e sua participação estão expostas com limitação explícita; suspeitos e anomalias ainda evoluirão."),
+      task("Link Inspector", "Performance, routing, QR, UTM, saúde e histórico organizados.", "active", "Performance, origem, dispositivo, configuração, QR e eventos recentes estão integrados; routing, health, version history e gate visual seguem abertos."),
     ] },
     { id: "m4", code: "M4", release: "Release 0.4.0", title: "Live + conversões", outcome: "A jornada além do clique fica visível em tempo quase real.", exitCriteria: "Eventos chegam por integração real, aparecem no Live e reconciliam com atribuição e receita.", tasks: [
       task("Live Traffic", "Stream eficiente, filtros e pausa sem perder contexto operacional."),

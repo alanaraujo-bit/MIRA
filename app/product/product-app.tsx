@@ -323,7 +323,7 @@ export default function ProductApp({ user }: { user: { displayName: string; emai
           <a href="#links"><span aria-hidden="true">↗</span>Links</a>
           <Link href="/product/campaigns"><span aria-hidden="true">◇</span>Campaigns</Link>
           <Link href="/product/domains"><span aria-hidden="true">◎</span>Domínios</Link>
-          <span aria-disabled="true"><span aria-hidden="true">◌</span>Analytics <small>em breve</small></span>
+          <Link href="/product/analytics"><span aria-hidden="true">◌</span>Analytics</Link>
         </nav>
         <Link className="roadmap-return" href="/">Roadmap Live <span>↗</span></Link>
       </aside>
@@ -393,6 +393,7 @@ export default function ProductApp({ user }: { user: { displayName: string; emai
                 <a href={item.destination_url} target="_blank" rel="noreferrer" title={item.destination_url}>{new URL(item.destination_url).hostname}</a>
                 <strong>{item.clicks.toLocaleString("pt-BR")}</strong>
                 <div className="link-actions">
+                  <Link href={`/product/links/${encodeURIComponent(item.id)}`}>Inspector</Link>
                   <button type="button" className={item.is_favorite ? "favorite active" : "favorite"} aria-pressed={item.is_favorite} onClick={() => void toggleFavorite(item)} disabled={mutating === item.id}>{item.is_favorite ? "★ Salvo" : "☆ Favoritar"}</button>
                   <button type="button" onClick={() => void copyLink(item)}>{copied === item.id ? "Copiado" : "Copiar"}</button>
                   <button type="button" onClick={() => setEditing(item)} disabled={mutating === item.id}>Editar</button>

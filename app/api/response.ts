@@ -34,5 +34,6 @@ export function errorResponse(error: unknown) {
   if (message === "CURSOR_INVALID") return apiError("Cursor de paginação inválido.");
   if (message === "UTM_PRESET_NOT_FOUND") return apiError("Padrão UTM não encontrado.", 404);
   if (message === "DOMAIN_NOT_FOUND") return apiError("Domínio não encontrado.", 404);
+  if (message === "AUTH_RATE_LIMIT") return apiError("Muitas tentativas. Aguarde alguns minutos antes de tentar novamente.", 429);
   return apiError(message, 400);
 }

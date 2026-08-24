@@ -108,7 +108,7 @@ export default function DomainsApp({ user }: { user: { displayName: string; emai
     <aside className="product-sidebar">
       <Link className="brand" href="/" aria-label="Mira Roadmap"><span className="brand-mark" aria-hidden="true"><i /><i /></span><span>Mira</span></Link>
       <div className="workspace-switcher"><span>Workspace</span><strong>{workspace?.name ?? "Carregando…"}</strong><small>{workspace?.role ?? ""}</small></div>
-      <nav aria-label="Produto"><Link href="/product"><span aria-hidden="true">⌂</span>Visão geral</Link><Link href="/product#links"><span aria-hidden="true">↗</span>Links</Link><Link href="/product/campaigns"><span aria-hidden="true">◇</span>Campaigns</Link><Link className="selected" href="/product/domains"><span aria-hidden="true">◎</span>Domínios</Link><span aria-disabled="true"><span aria-hidden="true">◌</span>Analytics <small>em breve</small></span></nav>
+      <nav aria-label="Produto"><Link href="/product"><span aria-hidden="true">⌂</span>Visão geral</Link><Link href="/product#links"><span aria-hidden="true">↗</span>Links</Link><Link href="/product/campaigns"><span aria-hidden="true">◇</span>Campaigns</Link><Link className="selected" href="/product/domains"><span aria-hidden="true">◎</span>Domínios</Link><Link href="/product/analytics"><span aria-hidden="true">◌</span>Analytics</Link></nav>
       <Link className="roadmap-return" href="/">Roadmap Live <span>↗</span></Link>
     </aside>
     <main id="domains-main" className="product-main">

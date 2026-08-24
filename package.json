@@ -1,6 +1,6 @@
 {
   "name": "mira-link-intelligence",
-  "version": "0.2.0-alpha.4",
+  "version": "0.3.0-alpha.1",
   "private": true,
   "engines": {
     "node": ">=22.13.0"
@@ -9,7 +9,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "npm run build && node --test tests/link-rules.test.mjs tests/domain-verification.test.mjs tests/auth-rules.test.mjs",
+    "test": "npm run build && node --test tests/link-rules.test.mjs tests/domain-verification.test.mjs tests/auth-rules.test.mjs tests/analytics-rules.test.mjs",
     "test:smoke": "node tests/smoke-m1.mjs",
     "test:smoke:m2": "node tests/smoke-m2.mjs",
     "test:smoke:m2-scale": "node tests/smoke-m2-scale.mjs",

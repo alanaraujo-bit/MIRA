@@ -5,8 +5,9 @@ const runId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 
 
 function client() {
   let cookie = "";
+  const ip = `198.51.100.${Math.floor(Math.random() * 200) + 1}`;
   return { async request(path, init = {}, expectedStatus = 200) {
-    const headers = { ...(init.headers || {}) };
+    const headers = { "x-forwarded-for": ip, ...(init.headers || {}) };
     if (cookie) headers.cookie = cookie;
     const response = await fetch(`${baseUrl}${path}`, { ...init, headers, redirect: init.redirect ?? "manual" });
     assert.equal(response.status, expectedStatus, `${init.method || "GET"} ${path} should return ${expectedStatus}`);
@@ -48,6 +49,27 @@ assert.match(redirect.headers.get("location") || "", /utm_source=qr/);
 assert.match(redirect.headers.get("x-mira-request-id") || "", /^[0-9a-f-]{36}$/);
 const summary = await owner.request(`/api/analytics/summary?workspaceId=${workspace.id}`);
 assert.equal((await summary.json()).summary.clicks7d, 1);
+const analyticsPage = await owner.request("/product/analytics", { headers: { accept: "text/html" } });
+assert.match(await analyticsPage.text(), /Reconciliando eventos/);
+const reportResponse = await owner.request(`/api/analytics/report?workspaceId=${workspace.id}&days=7`);
+const report = (await reportResponse.json()).report;
+assert.equal(report.metrics.clicks.current, 1);
+assert.equal(report.metrics.linksWithTraffic, 1);
+assert.equal(report.sources[0].label, "Instagram");
+assert.equal(report.devices[0].label, "Mobile");
+assert.equal(report.topLinks[0].id, link.id);
+assert.equal(report.campaigns[0].id, campaign.id);
+assert.equal(report.series.reduce((total, point) => total + point.current, 0), 1);
+await owner.request(`/api/analytics/report?workspaceId=${workspace.id}&days=8`, {}, 400);
+await outsider.request(`/api/analytics/report?workspaceId=${workspace.id}&days=7`, {}, 403);
+const inspectorPage = await owner.request(`/product/links/${link.id}`, { headers: { accept: "text/html" } });
+assert.match(await inspectorPage.text(), /Lendo o Link/);
+const linkAnalyticsResponse = await owner.request(`/api/analytics/links/${link.id}?days=7`);
+const linkAnalytics = (await linkAnalyticsResponse.json()).analytics;
+assert.equal(linkAnalytics.clicks.current, 1);
+assert.equal(linkAnalytics.recentEvents[0].referrer, "Instagram");
+assert.equal(linkAnalytics.recentEvents[0].device, "Mobile");
+await outsider.request(`/api/analytics/links/${link.id}?days=7`, {}, 404);
 const qr = await owner.request(`/api/links/${link.id}/qr?download=1`);
 assert.match(qr.headers.get("content-type") || "", /^image\/svg\+xml/);
 
@@ -63,4 +85,5 @@ await owner.request("/api/auth/login", { method: "POST", headers: jsonHeaders, b
 await owner.request("/product", { headers: { accept: "text/html" } });
 
 console.log(JSON.stringify({ account: email, workspace: workspace.id, campaign: campaign.id, link: link.id,
-  redirect: 302, clickPersisted: true, qr: "svg", domainDns: "checked", isolation: { workspace: 403, link: 404 }, session: "restored" }, null, 2));
+  redirect: 302, clickPersisted: true, analytics: { report: "compared", inspector: "verified", source: "Instagram", device: "Mobile" },
+  qr: "svg", domainDns: "checked", isolation: { workspace: 403, link: 404 }, session: "restored" }, null, 2));

@@ -7,7 +7,7 @@ export async function POST(request: Request) {
   const guard = writeRequestGuard(request); if (guard) return guard;
   try {
     const body = await request.json() as { email?: string; password?: string; name?: string; returnTo?: string };
-    await enforceAuthRateLimit("register", request.headers.get("x-forwarded-for")?.split(",")[0].trim() || "unknown");
+    await enforceAuthRateLimit("register", request.headers.get("x-forwarded-for")?.split(",")[0].trim() || "unknown", body.email ?? "");
     const result = await registerAccount({ email: body.email ?? "", password: body.password ?? "", name: body.name ?? "" });
     (await cookies()).set(SESSION_COOKIE, result.token, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: sessionMaxAgeSeconds });
     return Response.json({ user: result.user, returnTo: safeRelativeReturnPath(body.returnTo) }, { status: 201 });
