@@ -26,7 +26,13 @@ Data: 2026-08-24
 
 ## Gates ainda abertos
 
-- Publicar e verificar a migration D1 hospedada.
 - Executar a jornada autenticada no ambiente hospedado.
 - Inspecionar visualmente desktop e mobile.
 - Disponibilizar um data plane público separado do preview owner-only.
+
+## Publicação
+
+- Commit funcional: `2c6dac2e2d6d73e87aa749addbe4fb753bff4a76`.
+- Sites versão 7: deployment privado concluído com sucesso.
+- D1 hospedado: binding `DB` verificado com `campaigns`, `tags`, `link_tags` e as cinco tabelas do M1.
+- URL preservada: `https://mira-link-intelligence.alanvitoraraujo1a.chatgpt.site`.
