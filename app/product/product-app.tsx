@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import SignOutButton from "./sign-out-button";
 
 type Workspace = { id: string; name: string; slug: string; role: string };
 type LinkStatus = "active" | "archived" | "blocked";
@@ -330,7 +331,7 @@ export default function ProductApp({ user }: { user: { displayName: string; emai
       <main id="product-main" className="product-main">
         <header className="product-topbar">
           <div><span className="product-context">Visão geral</span><strong>{workspace?.name ?? "Mira"}</strong></div>
-          <div className="product-user"><span>{user.displayName.slice(0, 1).toUpperCase()}</span><div><strong>{user.displayName}</strong><small>{user.email}</small></div></div>
+          <SignOutButton user={user} />
         </header>
 
         {state === "loading" && <section className="product-state" aria-live="polite"><i /><h1>Preparando seu Workspace</h1><p>Conectando identidade, dados e permissões.</p></section>}

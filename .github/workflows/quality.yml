@@ -12,6 +12,22 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: mira
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d mira"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/mira
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -39,7 +55,4 @@ jobs:
             cat /tmp/mira-dev.log
             exit 1
           fi
-          npm run test:smoke
-          npm run test:smoke:m2
-          npm run test:smoke:m2-scale
-          npm run test:smoke:domains
+          npm run test:smoke:public

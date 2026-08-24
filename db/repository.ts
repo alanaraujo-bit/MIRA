@@ -1,7 +1,7 @@
-import { env } from "cloudflare:workers";
 import type { ChatGPTUser } from "../app/chatgpt-auth";
 import { normalizeDomainHostname, type DomainDnsResult } from "../lib/domain-verification";
 import { applyUtmParameters, normalizeSlug, normalizeTag, normalizeUtmValue, type UtmFields } from "../lib/link-rules";
+import { database, ensurePlatformSchema } from "./postgres";
 
 export type WorkspaceRole = "owner" | "admin" | "editor" | "viewer";
 type WorkspaceRow = { id: string; name: string; slug: string; role: WorkspaceRole };
@@ -38,93 +38,11 @@ export type CampaignDetail = CampaignRow & {
   top_links: { id: string; title: string; slug: string; channel: string | null; status: LinkStatus; clicks: number }[];
 };
 
-function database(): D1Database {
-  if (!env.DB) throw new Error("D1 binding DB is unavailable");
-  return env.DB;
-}
-
 let schemaReady: Promise<void> | null = null;
 
 async function ensureSchema(): Promise<void> {
   if (schemaReady) return schemaReady;
-  schemaReady = (async () => {
-    const d1 = database();
-    await d1.batch([
-      d1.prepare(`CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY NOT NULL, email TEXT NOT NULL,
-        display_name TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)`),
-      d1.prepare(`CREATE TABLE IF NOT EXISTS workspaces (id TEXT PRIMARY KEY NOT NULL, name TEXT NOT NULL,
-        slug TEXT NOT NULL, owner_user_id TEXT NOT NULL REFERENCES users(id), created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)`),
-      d1.prepare(`CREATE TABLE IF NOT EXISTS workspace_members (workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
-        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, role TEXT NOT NULL, created_at INTEGER NOT NULL,
-        PRIMARY KEY (workspace_id, user_id))`),
-      d1.prepare(`CREATE TABLE IF NOT EXISTS campaigns (id TEXT PRIMARY KEY NOT NULL,
-        workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE, name TEXT NOT NULL, objective TEXT,
-        status TEXT DEFAULT 'active' NOT NULL, starts_at INTEGER, ends_at INTEGER,
-        created_by_user_id TEXT NOT NULL REFERENCES users(id), created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)`),
-      d1.prepare(`CREATE TABLE IF NOT EXISTS domains (id TEXT PRIMARY KEY NOT NULL,
-        workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE, hostname TEXT NOT NULL,
-        verification_token TEXT NOT NULL, status TEXT DEFAULT 'pending' NOT NULL,
-        dns_status TEXT DEFAULT 'pending' NOT NULL, ssl_status TEXT DEFAULT 'pending' NOT NULL,
-        last_error TEXT, verified_at INTEGER, last_checked_at INTEGER,
-        created_by_user_id TEXT NOT NULL REFERENCES users(id), created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)`),
-      d1.prepare(`CREATE TABLE IF NOT EXISTS links (id TEXT PRIMARY KEY NOT NULL,
-        workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE, title TEXT NOT NULL,
-        destination_url TEXT NOT NULL, slug TEXT NOT NULL, domain_id TEXT REFERENCES domains(id) ON DELETE SET NULL,
-        campaign_id TEXT REFERENCES campaigns(id) ON DELETE SET NULL,
-        channel TEXT, utm_source TEXT, utm_medium TEXT, utm_campaign TEXT, utm_content TEXT, utm_term TEXT,
-        status TEXT DEFAULT 'active' NOT NULL, created_by_user_id TEXT NOT NULL REFERENCES users(id),
-        created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)`),
-      d1.prepare(`CREATE TABLE IF NOT EXISTS click_events (id TEXT PRIMARY KEY NOT NULL,
-        workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
-        link_id TEXT NOT NULL REFERENCES links(id) ON DELETE CASCADE, referrer_host TEXT, device_class TEXT NOT NULL, occurred_at INTEGER NOT NULL)`),
-      d1.prepare(`CREATE TABLE IF NOT EXISTS tags (id TEXT PRIMARY KEY NOT NULL,
-        workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE, name TEXT NOT NULL,
-        normalized_name TEXT NOT NULL, created_at INTEGER NOT NULL)`),
-      d1.prepare(`CREATE TABLE IF NOT EXISTS link_tags (link_id TEXT NOT NULL REFERENCES links(id) ON DELETE CASCADE,
-        tag_id TEXT NOT NULL REFERENCES tags(id) ON DELETE CASCADE, PRIMARY KEY (link_id, tag_id))`),
-      d1.prepare(`CREATE TABLE IF NOT EXISTS link_favorites (link_id TEXT NOT NULL REFERENCES links(id) ON DELETE CASCADE,
-        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, created_at INTEGER NOT NULL,
-        PRIMARY KEY (link_id, user_id))`),
-      d1.prepare(`CREATE TABLE IF NOT EXISTS utm_presets (id TEXT PRIMARY KEY NOT NULL,
-        workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE, name TEXT NOT NULL,
-        normalized_name TEXT NOT NULL, source TEXT, medium TEXT, campaign TEXT, content TEXT, term TEXT,
-        created_by_user_id TEXT NOT NULL REFERENCES users(id), created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)`),
-    ]);
-    const columns = await d1.prepare("PRAGMA table_info(links)").all<{ name: string }>();
-    const names = new Set(columns.results.map((column) => column.name));
-    const additions: Record<string, string> = {
-      campaign_id: "TEXT REFERENCES campaigns(id) ON DELETE SET NULL", channel: "TEXT", utm_source: "TEXT",
-      utm_medium: "TEXT", utm_campaign: "TEXT", utm_content: "TEXT", utm_term: "TEXT",
-      domain_id: "TEXT REFERENCES domains(id) ON DELETE SET NULL",
-    };
-    for (const [name, definition] of Object.entries(additions)) {
-      if (!names.has(name)) await d1.prepare(`ALTER TABLE links ADD COLUMN ${name} ${definition}`).run();
-    }
-    await d1.batch([
-      d1.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_workspaces_slug ON workspaces(slug)"),
-      d1.prepare("CREATE INDEX IF NOT EXISTS idx_workspaces_owner ON workspaces(owner_user_id)"),
-      d1.prepare("CREATE INDEX IF NOT EXISTS idx_workspace_members_user ON workspace_members(user_id)"),
-      d1.prepare("CREATE INDEX IF NOT EXISTS idx_campaigns_workspace_updated ON campaigns(workspace_id, updated_at)"),
-      d1.prepare("CREATE INDEX IF NOT EXISTS idx_campaigns_workspace_status ON campaigns(workspace_id, status)"),
-      d1.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_domains_hostname ON domains(hostname)"),
-      d1.prepare("CREATE INDEX IF NOT EXISTS idx_domains_workspace_updated ON domains(workspace_id, updated_at)"),
-      d1.prepare("CREATE INDEX IF NOT EXISTS idx_domains_workspace_status ON domains(workspace_id, status)"),
-      d1.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_links_slug ON links(slug)"),
-      d1.prepare("DROP INDEX IF EXISTS idx_links_workspace_updated"),
-      d1.prepare("CREATE INDEX IF NOT EXISTS idx_links_workspace_updated_id ON links(workspace_id, updated_at, id)"),
-      d1.prepare("CREATE INDEX IF NOT EXISTS idx_links_workspace_status ON links(workspace_id, status)"),
-      d1.prepare("CREATE INDEX IF NOT EXISTS idx_links_workspace_campaign ON links(workspace_id, campaign_id)"),
-      d1.prepare("CREATE INDEX IF NOT EXISTS idx_links_workspace_domain ON links(workspace_id, domain_id)"),
-      d1.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_tags_workspace_normalized ON tags(workspace_id, normalized_name)"),
-      d1.prepare("CREATE INDEX IF NOT EXISTS idx_link_tags_tag ON link_tags(tag_id)"),
-      d1.prepare("CREATE INDEX IF NOT EXISTS idx_link_favorites_user_created ON link_favorites(user_id, created_at)"),
-      d1.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_utm_presets_workspace_normalized ON utm_presets(workspace_id, normalized_name)"),
-      d1.prepare("CREATE INDEX IF NOT EXISTS idx_utm_presets_workspace_updated ON utm_presets(workspace_id, updated_at)"),
-      d1.prepare("CREATE INDEX IF NOT EXISTS idx_click_events_workspace_time ON click_events(workspace_id, occurred_at)"),
-      d1.prepare("CREATE INDEX IF NOT EXISTS idx_click_events_link_time ON click_events(link_id, occurred_at)"),
-      d1.prepare("PRAGMA optimize"),
-    ]);
-  })().catch((error) => { schemaReady = null; throw error; });
+  schemaReady = ensurePlatformSchema().catch((error) => { schemaReady = null; throw error; });
   return schemaReady;
 }
 

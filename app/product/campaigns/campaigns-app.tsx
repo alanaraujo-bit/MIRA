@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import SignOutButton from "../sign-out-button";
 
 type Workspace = { id: string; name: string; slug: string; role: string };
 type CampaignStatus = "planning" | "active" | "ended";
@@ -85,7 +86,7 @@ export default function CampaignsApp({ user }: { user: { displayName: string; em
       <Link className="roadmap-return" href="/">Roadmap Live <span>↗</span></Link>
     </aside>
     <main id="campaign-main" className="product-main">
-      <header className="product-topbar"><div><span className="product-context">Campaigns</span><strong>{workspace?.name ?? "Mira"}</strong></div><div className="product-user"><span>{user.displayName.slice(0, 1).toUpperCase()}</span><div><strong>{user.displayName}</strong><small>{user.email}</small></div></div></header>
+      <header className="product-topbar"><div><span className="product-context">Campaigns</span><strong>{workspace?.name ?? "Mira"}</strong></div><SignOutButton user={user} /></header>
       {state === "loading" && <section className="product-state" aria-live="polite"><i /><h1>Organizando campanhas</h1><p>Conectando Links, canais e métricas reais.</p></section>}
       {state === "error" && <section className="product-state error" role="alert"><span>!</span><h1>Não foi possível abrir Campaigns</h1><p>{notice?.text}</p><button className="button primary" onClick={() => void load()}>Tentar novamente</button></section>}
       {state === "ready" && workspace && <div className="product-content campaigns-content">

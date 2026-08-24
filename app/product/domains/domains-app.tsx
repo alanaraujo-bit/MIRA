@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import SignOutButton from "../sign-out-button";
 
 type Workspace = { id: string; name: string; role: string };
 type Domain = {
@@ -70,7 +71,7 @@ export default function DomainsApp({ user }: { user: { displayName: string; emai
       const result = await jsonRequest<{ domain: Domain }>(`/api/domains/${domain.id}/verify`, { method: "POST", body: "{}" });
       setDomains((current) => current.map((item) => item.id === domain.id ? result.domain : item));
       setNotice(result.domain.dns_status === "verified"
-        ? { tone: "success", text: "Propriedade confirmada. A ativação de tráfego e SSL ficará disponível no gate público." }
+        ? { tone: "success", text: "Propriedade confirmada. O provisionamento de tráfego e SSL da marca é o próximo gate." }
         : { tone: "info", text: result.domain.last_error ?? "O DNS ainda não corresponde ao registro esperado." });
     } catch (error) {
       setNotice({ tone: "error", text: error instanceof Error ? error.message : "Não foi possível verificar o DNS." });
@@ -111,12 +112,12 @@ export default function DomainsApp({ user }: { user: { displayName: string; emai
       <Link className="roadmap-return" href="/">Roadmap Live <span>↗</span></Link>
     </aside>
     <main id="domains-main" className="product-main">
-      <header className="product-topbar"><div><span className="product-context">Domínios</span><strong>{workspace?.name ?? "Mira"}</strong></div><div className="product-user"><span>{user.displayName.slice(0, 1).toUpperCase()}</span><div><strong>{user.displayName}</strong><small>{user.email}</small></div></div></header>
+      <header className="product-topbar"><div><span className="product-context">Domínios</span><strong>{workspace?.name ?? "Mira"}</strong></div><SignOutButton user={user} /></header>
       {state === "loading" && <section className="product-state" aria-live="polite"><i /><h1>Lendo a configuração DNS</h1><p>Organizando propriedade, saúde e disponibilidade.</p></section>}
       {state === "error" && <section className="product-state error" role="alert"><span>!</span><h1>Não foi possível abrir Domínios</h1><p>{notice?.text}</p><button className="button primary" onClick={() => void load()}>Tentar novamente</button></section>}
       {state === "ready" && workspace && <div className="product-content domains-content">
         <section className="product-intro"><div><span className="eyebrow">Branded links</span><h1>Sua marca em cada endereço.</h1><p>Conecte um domínio, prove a propriedade por DNS e acompanhe cada etapa sem precisar interpretar mensagens de infraestrutura.</p></div><a className="button quiet" href="#new-domain">Adicionar domínio <span>↓</span></a></section>
-        <section className="metric-row" aria-label="Resumo de domínios"><article><span>Conectados</span><strong>{domains.length}</strong><small>neste Workspace</small></article><article><span>DNS verificado</span><strong>{totals.verified}</strong><small>{totals.attention ? `${totals.attention} exigem atenção` : "sem divergências conhecidas"}</small></article><article><span>SSL ativo</span><strong>{totals.activeSsl}</strong><small>depende da ativação pública</small></article></section>
+        <section className="metric-row" aria-label="Resumo de domínios"><article><span>Conectados</span><strong>{domains.length}</strong><small>neste Workspace</small></article><article><span>DNS verificado</span><strong>{totals.verified}</strong><small>{totals.attention ? `${totals.attention} exigem atenção` : "sem divergências conhecidas"}</small></article><article><span>SSL ativo</span><strong>{totals.activeSsl}</strong><small>depende do edge de marca</small></article></section>
         {notice && <div className={`product-notice ${notice.tone}`} role={notice.tone === "error" ? "alert" : "status"}><span>{notice.tone === "error" ? "!" : notice.tone === "success" ? "✓" : "i"}</span><p>{notice.text}</p><button type="button" onClick={() => setNotice(null)} aria-label="Fechar aviso">×</button></div>}
         <section className="create-link-panel domain-create" id="new-domain"><header><div><span className="eyebrow">Nova identidade</span><h2>Conectar domínio</h2></div><span className="secure-note">Verificação TXT · sem transferência</span></header><form onSubmit={create}><label className="domain-host-field"><span>Domínio ou subdomínio</span><input name="hostname" autoCapitalize="none" autoComplete="off" inputMode="url" placeholder="go.empresa.com" required /></label><button className="button primary" type="submit" disabled={busy === "create"}>{busy === "create" ? "Adicionando…" : "Adicionar domínio"}</button></form><p className="form-message">A Mira nunca solicita acesso ao seu provedor DNS. Você publica apenas um TXT de verificação reversível.</p></section>
         <section className="links-panel domains-panel"><header><div><span className="eyebrow">Infraestrutura de marca</span><h2>Domínios</h2></div><span>{domains.length} {domains.length === 1 ? "item" : "itens"}</span></header>
@@ -127,7 +128,7 @@ export default function DomainsApp({ user }: { user: { displayName: string; emai
             {domain.last_error && <p className="domain-error">{domain.last_error}</p>}
           </article>)}</div>}
         </section>
-        <aside className="activation-note"><span>Gate de ativação</span><div><h2>O DNS prova a propriedade; não publica tráfego sozinho.</h2><p>A associação ao edge público e a emissão de SSL permanecem desativadas neste ambiente owner-only. A Mira mostra esse limite explicitamente para não gerar um endereço de marca que pareça funcional antes de estar seguro.</p></div></aside>
+        <aside className="activation-note"><span>Gate de ativação</span><div><h2>O DNS prova a propriedade; não publica tráfego sozinho.</h2><p>Este preview já serve redirects no domínio da Mira. A associação de cada domínio de marca ao edge e a emissão automática de SSL permanecem desativadas até o provisionamento seguro desse fluxo.</p></div></aside>
       </div>}
     </main>
   </div>;

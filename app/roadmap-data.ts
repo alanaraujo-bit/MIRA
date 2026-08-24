@@ -5,13 +5,16 @@ type Phase = { id: string; code: string; title: string; intent: string; mileston
 const task = (title: string, detail: string, status: Status = "queued", evidence?: string, blocker?: string): Task => ({ title, detail, status, evidence, blocker });
 
 export const project = {
-  release: "0.2.0-alpha.3", environment: "Sites · alpha 3 privado ao vivo", commit: "main · 93785c5 publicado",
-  liveUrl: "https://mira-link-intelligence.alanvitoraraujo1a.chatgpt.site",
-  updatedIso: "2026-08-24T15:42:00-03:00", updatedLabel: "24 ago 2026 · 15:42 BRT",
-  currentFocus: "Milestone 2 · Organização profissional",
-  currentDetail: "Alpha 3 publicado com onboarding DNS e Links de marca; o próximo gate operacional é ativar edge/SSL público com domínio controlado.",
-  currentGate: "inspeção visual + ownership positivo + edge público",
+  release: "0.2.0-alpha.4", environment: "Vercel + Railway · preview público", commit: "main · GitHub conectado ao Vercel",
+  liveUrl: "https://mira-link-intelligence.vercel.app",
+  updatedIso: "2026-08-24T15:38:00-03:00", updatedLabel: "24 ago 2026 · 15:38 BRT",
+  currentFocus: "Milestone 2 · Estabilização pública",
+  currentDetail: "Runtime migrado para Next.js nativo, autenticação própria e PostgreSQL Railway; publicação e validação remota estão em execução.",
+  currentGate: "deploy Git + smoke remoto + inspeção visual",
   validations: [
+    { status: "done", title: "Runtime Vercel aprovado", detail: "Build Next.js 16 nativo compilou com TypeScript e gerou 28 rotas sem depender do runtime privado anterior.", time: "24 ago" },
+    { status: "done", title: "PostgreSQL Railway real", detail: "Instância persistente provisionada com volume dedicado e conexão TLS; schema inicializado de forma idempotente.", time: "24 ago" },
+    { status: "done", title: "Jornada pública local", detail: "Cadastro → sessão → Workspace → Campaign → Link → 302 → click → analytics → QR → logout/login passou contra o Railway; isolamento 403/404 confirmado.", time: "24 ago" },
     { status: "done", title: "Pesquisa inicial da marca", detail: "Triagem pública de categoria concluída; clearance jurídico segue pendente.", time: "24 ago" },
     { status: "done", title: "Servidor de preview", detail: "Base oficial de publicação inicializada e servindo localmente.", time: "24 ago" },
     { status: "done", title: "Build e testes", detail: "Build de produção aprovado; 2/2 contratos de render, metadata e PWA passaram após correção.", time: "24 ago" },
@@ -42,7 +45,7 @@ export const project = {
     { status: "done", title: "Schema de domínios hospedado", detail: "Binding DB verificado com 11 tabelas; domains foi aplicada sem remover nenhuma entidade anterior.", time: "24 ago" },
   ],
   issues: [
-    { severity: "medium", code: "P1", title: "Ativação pública de domínio indisponível", detail: "O preview é owner-only; propriedade DNS pode ser confirmada, mas roteamento e SSL distribuíveis exigem uma superfície edge pública separada." },
+    { severity: "medium", code: "P1", title: "Branded domains ainda não roteiam", detail: "Redirects no domínio público da Mira funcionam; propriedade DNS customizada pode ser confirmada, mas edge e emissão SSL por domínio permanecem um gate próprio." },
     { severity: "medium", code: "P2", title: "Inspeção visual indisponível", detail: "A conexão foi reavaliada e continua sem navegador controlável; o gate visual permanece aberto." },
     { severity: "low", code: "P3", title: "Clearance jurídico da marca", detail: "Busca formal de marca e domínio definitivo será necessária antes do lançamento comercial." },
     { severity: "low", code: "P4", title: "Advisories moderados no drizzle-kit", detail: "Quatro ocorrências de desenvolvimento vêm do loader interno; produção tem zero advisories e o fix automático exigiria downgrade incompatível. Monitorar atualização segura." },
@@ -52,7 +55,7 @@ export const project = {
     { id: "002", title: "Separar plano de controle e plano de dados", summary: "Gestão evolui independentemente do caminho crítico de redirect e ingestão de eventos.", status: "Aceita" },
     { id: "003", title: "Privacidade por minimização", summary: "Coleta necessária, precisão comunicada honestamente, retenção por plano e controles por Workspace.", status: "Aceita" },
     { id: "004", title: "Progresso deriva de evidência", summary: "Tarefas parciais não contam; milestones fecham com execução, teste, inspeção e publicação.", status: "Aceita" },
-    { id: "005", title: "Identidade do preview vem da plataforma", summary: "SIWC identifica o usuário; autorização de Workspace continua explícita e server-side. Autenticação pública será confirmada antes do lançamento aberto.", status: "Aceita" },
+    { id: "005", title: "Identidade pública pertence à Mira", summary: "Cadastro e login usam senha com hash forte, cookie HTTP-only e sessão revogável; autorização de Workspace continua explícita e server-side.", status: "Aceita" },
     { id: "006", title: "Redirect possui dependência mínima", summary: "O worker consulta apenas o módulo do data plane e devolve o 302 antes de aguardar a persistência idempotente do evento.", status: "Aceita" },
     { id: "007", title: "PWA não armazena dados privados", summary: "Shell público pode usar cache; produto, APIs, autenticação e redirects permanecem network-only.", status: "Aceita" },
     { id: "008", title: "Escala progressiva na biblioteca", summary: "Links usam paginação keyset estável; favoritos são preferências pessoais e presets UTM pertencem ao Workspace.", status: "Aceita" },
@@ -73,12 +76,12 @@ export const phases: Phase[] = [
   ]},
   { id: "core", code: "Fase 1", title: "Núcleo utilizável", intent: "Entregar conta, Workspace, link, redirect e evento confiável em um fluxo real.", milestones: [
     { id: "m1", code: "M1", release: "Release 0.1.0", title: "Primeiro link real", outcome: "Um usuário cria conta, publica um link e acompanha cliques reais.", exitCriteria: "Fluxo publicado e testado: cadastro → Workspace → criar → redirecionar → registrar evento → visualizar resultado.", tasks: [
-      task("Fundação full-stack e ambientes", "Aplicação, banco, migrations, configuração segura, preview e CI.", "active", "Alpha 2 e D1 hospedados; workflow de qualidade definido, ainda sem execução remota comprovada."),
-      task("Autenticação e sessões", "Cadastro, login, confirmação, recuperação, sessões seguras e estados de erro.", "active", "SIWC e guards same-origin integrados; jornada hospedada e modelo público ainda precisam de validação."),
+      task("Fundação full-stack e ambientes", "Aplicação, banco, migrations, configuração segura, preview e CI.", "active", "GitHub conectado ao Vercel, PostgreSQL Railway ativo e build nativo aprovado; deploy e workflow remotos estão no gate atual."),
+      task("Autenticação e sessões", "Cadastro, login, confirmação, recuperação, sessões seguras e estados de erro.", "active", "Cadastro/login públicos, bcrypt, cookie HTTP-only, expiração, logout e rate limit foram exercitados; confirmação e recuperação ainda não existem."),
       task("Workspace e autorização", "Isolamento multi-tenant, ownership e verificação de acesso em todas as operações.", "active", "Membership server-side cobre leitura e mutação; tentativas cross-Workspace retornam 403/404."),
       task("CRUD de Links", "Criar, editar, arquivar, buscar e copiar links com validação de destino e slug.", "active", "Fluxo completo publicado no alpha 2; inspeção visual e jornada autenticada hospedada ainda pendentes."),
-      task("Redirect crítico", "Resolução de domínio/slug, cache, fallback seguro e baixa latência observável.", "active", "302/404, timing, request ID e no-store publicados; superfície pública continua bloqueada."),
-      task("Ingestão de click", "Registro assíncrono idempotente com minimização e classificação inicial.", "active", "waitUntil + INSERT OR IGNORE publicados, sem IP ou user-agent bruto; clique hospedado ainda não exercitado."),
+      task("Redirect crítico", "Resolução de domínio/slug, cache, fallback seguro e baixa latência observável.", "active", "302/404 e no-store funcionam no runtime Next.js público; performance remota ainda será medida após o deploy Git."),
+      task("Ingestão de click", "Registro assíncrono idempotente com minimização e classificação inicial.", "active", "Clique real persistiu no PostgreSQL sem IP ou user-agent bruto; confiabilidade sob falhas e carga permanece aberta."),
       task("Dashboard de primeiro valor", "Tráfego real, links recentes, atenção e próximos passos.", "active", "Busca, filtros, edição, estados, PWA e offline publicados; inspeção visual permanece bloqueada."),
     ] },
     { id: "m2", code: "M2", release: "Release 0.2.0", title: "Organização profissional", outcome: "Links operam em campanhas, tags, domínios e sistemas de busca eficientes.", exitCriteria: "Busca, filtros, campanhas e domínio base funcionam com dados reais e conjuntos grandes paginados.", tasks: [
