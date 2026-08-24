@@ -23,7 +23,7 @@ test("server-renders the Mira Roadmap Live", async () => {
   assert.match(html, /Roadmap Live/);
   assert.match(html, /Abrir produto/);
   assert.match(html, /Milestone 2/);
-  assert.match(html, /Paginação estável, favoritos pessoais, padrões UTM e Campaign Inspector/);
+  assert.match(html, /Alpha 2 publicado com paginação estável, favoritos pessoais, padrões UTM e Campaign Inspector/);
   assert.match(html, /Critério de saída/);
   assert.match(html, /Abrir release/);
   assert.match(html, /mira-link-intelligence\.alanvitoraraujo1a\.chatgpt\.site/);

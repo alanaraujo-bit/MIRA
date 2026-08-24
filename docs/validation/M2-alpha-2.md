@@ -24,5 +24,11 @@ Data: 2026-08-24
 ## Gates
 
 - O Browser foi reavaliado e retornou lista vazia; desktop/mobile continuam sem inspeção visual controlada.
-- Publicação e verificação da migration hospedada ainda são necessárias para este candidato.
 - Domínios customizados continuam fora deste corte e impedem concluir o M2.
+
+## Publicação
+
+- O commit funcional `09cf714` foi salvo como Sites versão 10 e publicado com sucesso no ambiente privado.
+- O deployment `appgdep_6a8c85eddaf88191bae4f4008b7de75b` terminou em `succeeded`.
+- O binding hospedado `DB` foi inspecionado após a publicação e expôs 10 tabelas, incluindo `link_favorites` e `utm_presets`.
+- A auditoria de dependências de produção permaneceu em zero vulnerabilidades conhecidas.

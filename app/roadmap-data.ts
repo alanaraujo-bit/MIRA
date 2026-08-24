@@ -5,12 +5,12 @@ type Phase = { id: string; code: string; title: string; intent: string; mileston
 const task = (title: string, detail: string, status: Status = "queued", evidence?: string, blocker?: string): Task => ({ title, detail, status, evidence, blocker });
 
 export const project = {
-  release: "0.2.0-alpha.2", environment: "Sites · alpha 1 ao vivo", commit: "main · candidato M2 alpha 2",
+  release: "0.2.0-alpha.2", environment: "Sites · alpha 2 privado ao vivo", commit: "main · 09cf714 publicado",
   liveUrl: "https://mira-link-intelligence.alanvitoraraujo1a.chatgpt.site",
-  updatedIso: "2026-08-24T14:54:00-03:00", updatedLabel: "24 ago 2026 · 14:54 BRT",
+  updatedIso: "2026-08-24T15:00:00-03:00", updatedLabel: "24 ago 2026 · 15:00 BRT",
   currentFocus: "Milestone 2 · Organização profissional",
-  currentDetail: "Paginação estável, favoritos pessoais, padrões UTM e Campaign Inspector validados localmente; preparando publicação.",
-  currentGate: "publicação alpha 2 + inspeção visual",
+  currentDetail: "Alpha 2 publicado com paginação estável, favoritos pessoais, padrões UTM e Campaign Inspector; domínios são o próximo corte funcional.",
+  currentGate: "inspeção visual + domínios customizados",
   validations: [
     { status: "done", title: "Pesquisa inicial da marca", detail: "Triagem pública de categoria concluída; clearance jurídico segue pendente.", time: "24 ago" },
     { status: "done", title: "Servidor de preview", detail: "Base oficial de publicação inicializada e servindo localmente.", time: "24 ago" },
@@ -34,6 +34,8 @@ export const project = {
     { status: "done", title: "Paginação M2 validada", detail: "27 Links reais atravessaram páginas 25 + 2 sem duplicatas; cursor inválido retorna 400 e o plano usa o índice composto esperado.", time: "24 ago" },
     { status: "done", title: "Organização pessoal e UTM", detail: "Favorito isolado por usuário, filtro dedicado, preset compartilhado, normalização consistente, duplicata rejeitada e remoção exercitados.", time: "24 ago" },
     { status: "done", title: "Campaign Inspector local", detail: "Campaign com 27 Links consolidou dois canais, ranking de Links e métricas sem dados de demonstração.", time: "24 ago" },
+    { status: "done", title: "M2 alpha 2 publicado", detail: "Sites versão 10 publicada no ambiente privado a partir do commit 09cf714; deployment concluído com sucesso.", time: "24 ago" },
+    { status: "done", title: "Schema de escala hospedado", detail: "Binding DB verificado com 10 tabelas; link_favorites e utm_presets foram aplicadas ao lado do núcleo M2.", time: "24 ago" },
   ],
   issues: [
     { severity: "medium", code: "P1", title: "Redirect público ainda indisponível", detail: "O preview atual é owner-only; links distribuíveis exigem uma superfície pública separada e seu gate de acesso." },
@@ -75,8 +77,8 @@ export const phases: Phase[] = [
       task("Dashboard de primeiro valor", "Tráfego real, links recentes, atenção e próximos passos.", "active", "Busca, filtros, edição, estados, PWA e offline publicados; inspeção visual permanece bloqueada."),
     ] },
     { id: "m2", code: "M2", release: "Release 0.2.0", title: "Organização profissional", outcome: "Links operam em campanhas, tags, domínios e sistemas de busca eficientes.", exitCriteria: "Busca, filtros, campanhas e domínio base funcionam com dados reais e conjuntos grandes paginados.", tasks: [
-      task("Campaigns de primeira classe", "Criação, canais, links associados e visão consolidada inicial.", "active", "Inspector, comparação por canal e ranking passaram localmente; publicação alpha 2 e inspeção visual ainda estão abertas."),
-      task("Busca e filtros", "Busca global, filtros compostos, tags, favoritos e estados persistidos.", "active", "Texto/status/campanha/tag/favoritos combinam com paginação keyset validada em 27 registros; gate publicado/visual segue aberto."),
+      task("Campaigns de primeira classe", "Criação, canais, links associados e visão consolidada inicial.", "active", "Inspector, comparação por canal e ranking foram testados e publicados no alpha 2; inspeção visual ainda está aberta."),
+      task("Busca e filtros", "Busca global, filtros compostos, tags, favoritos e estados persistidos.", "active", "Texto/status/campanha/tag/favoritos combinam com paginação keyset validada em 27 registros e publicada; gate visual segue aberto."),
       task("Domínios customizados", "Onboarding DNS, verificação, SSL, saúde e mensagens acionáveis."),
       task("UTM management", "Templates, convenções, validação e prevenção de inconsistências.", "active", "Presets compartilhados e convenção lower-kebab foram validados; edição dedicada e análise de inconsistências ainda evoluirão."),
       task("QR integrado", "Geração, personalização, exportação e atribuição ao mesmo Link e Campaign.", "active", "SVG de alta correção foi publicado a partir do endereço rastreável com autorização de Workspace; personalização avançada e gate visual seguem abertos."),
