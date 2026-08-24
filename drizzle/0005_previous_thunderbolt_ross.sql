@@ -1,0 +1,2 @@
+ALTER TABLE `click_events` ADD `session_id_hash` text;--> statement-breakpoint
+CREATE INDEX `idx_click_events_workspace_session_time` ON `click_events` (`workspace_id`,`session_id_hash`,`occurred_at`);

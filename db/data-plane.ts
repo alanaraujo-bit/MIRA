@@ -32,16 +32,18 @@ export async function recordClick(database: D1Database, input: {
   workspaceId: string;
   referrer: string | null;
   userAgent: string | null;
+  sessionIdHash?: string | null;
 }): Promise<void> {
   await database.prepare(`
-    INSERT OR IGNORE INTO click_events (id, workspace_id, link_id, referrer_host, device_class, occurred_at)
-    VALUES (?, ?, ?, ?, ?, ?)
+    INSERT OR IGNORE INTO click_events (id, workspace_id, link_id, referrer_host, device_class, session_id_hash, occurred_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
   `).bind(
     input.eventId,
     input.workspaceId,
     input.linkId,
     referrerHost(input.referrer),
     classifyDevice(input.userAgent),
+    input.sessionIdHash ?? null,
     Date.now(),
   ).run();
 }

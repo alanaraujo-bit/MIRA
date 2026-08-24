@@ -118,7 +118,7 @@ export default function Home() {
 
         <section className="decisions" id="decisions"><div className="section-intro compact"><div><span className="section-kicker">Decisões registradas</span><h2>O que orienta a construção.</h2></div><p>As decisões podem evoluir, mas nunca silenciosamente.</p></div><div className="decision-list">{project.decisions.map((decision) => <article key={decision.id}><div className="decision-number">{decision.id}</div><div><h3>{decision.title}</h3><p>{decision.summary}</p></div><span>{decision.status}</span></article>)}</div></section>
       </main>
-      <footer><div className="brand footer-brand"><span className="brand-mark" aria-hidden="true"><i /><i /></span><span>Mira</span></div><p>Link Intelligence · Estado verificável.</p><span>{project.updatedLabel}</span></footer>
+      <footer><div className="brand footer-brand"><span className="brand-mark" aria-hidden="true"><i /><i /></span><span>Mira</span></div><p>Link Intelligence · Estado verificável. · <a href="/privacy">Práticas de dados</a></p><span>{project.updatedLabel}</span></footer>
     </>
   );
 }

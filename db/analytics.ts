@@ -14,6 +14,9 @@ export type AnalyticsReport = {
   range: { days: number; startsAt: number; endsAt: number; previousStartsAt: number; previousEndsAt: number };
   metrics: {
     clicks: Comparison;
+    sessions: Comparison;
+    sessionCoverage: number;
+    clicksPerSession: number;
     activeLinks: number;
     linksWithTraffic: number;
     automatedClicks: number;
@@ -33,6 +36,9 @@ export type LinkAnalytics = {
   link: LinkRow;
   range: AnalyticsReport["range"];
   clicks: Comparison;
+  sessions: Comparison;
+  sessionCoverage: number;
+  clicksPerSession: number;
   series: SeriesPoint[];
   sources: Breakdown[];
   devices: Breakdown[];
@@ -109,11 +115,13 @@ function buildInsights(report: Omit<AnalyticsReport, "insights" | "limitations">
   else if (clicks.direction === "up") insights.push({ tone: "positive", title: "Tráfego em crescimento", detail: `Cliques cresceram ${clicks.deltaPercent}% contra o período anterior equivalente.` });
   else if (clicks.direction === "down") insights.push({ tone: "attention", title: "Queda de tráfego", detail: `Cliques recuaram ${Math.abs(clicks.deltaPercent ?? 0)}% contra o período anterior equivalente.` });
   else insights.push({ tone: "neutral", title: "Tráfego estável", detail: "O volume de cliques ficou no mesmo nível do período anterior equivalente." });
+  if (report.metrics.automatedShare >= 10) insights.push({ tone: "attention", title: "Automação acima do esperado", detail: `${report.metrics.automatedShare}% dos cliques foram classificados como automação conhecida.` });
+  if (report.metrics.sessions.current) insights.push({ tone: "neutral", title: `${report.metrics.clicksPerSession} cliques por sessão observada`,
+    detail: `A cobertura de sessão alcançou ${report.metrics.sessionCoverage}% dos cliques; GPC e DNT permanecem fora desta contagem.` });
   const source = report.sources[0];
   if (source?.current) insights.push({ tone: "neutral", title: `${source.label} lidera a origem`, detail: `${source.share}% dos cliques atribuíveis do período vieram desta origem.` });
   const device = report.devices.find((item) => item.key !== "bot");
   if (device?.current) insights.push({ tone: "neutral", title: `${device.label} concentra o tráfego`, detail: `${device.share}% dos eventos classificados pertencem a esta classe de dispositivo.` });
-  if (report.metrics.automatedShare >= 10) insights.push({ tone: "attention", title: "Automação acima do esperado", detail: `${report.metrics.automatedShare}% dos cliques foram classificados como automação conhecida.` });
   return insights.slice(0, 4);
 }
 
@@ -125,10 +133,15 @@ export async function workspaceAnalytics(userId: string, workspaceId: string, re
     d1.prepare(`SELECT SUM(CASE WHEN occurred_at >= ? THEN 1 ELSE 0 END) AS current,
       SUM(CASE WHEN occurred_at < ? THEN 1 ELSE 0 END) AS previous,
       SUM(CASE WHEN occurred_at >= ? AND device_class = 'bot' THEN 1 ELSE 0 END) AS automated,
+      COUNT(DISTINCT CASE WHEN occurred_at >= ? THEN session_id_hash END) AS current_sessions,
+      COUNT(DISTINCT CASE WHEN occurred_at < ? THEN session_id_hash END) AS previous_sessions,
+      SUM(CASE WHEN occurred_at >= ? AND session_id_hash IS NOT NULL THEN 1 ELSE 0 END) AS session_attributed,
       MAX(occurred_at) AS last_event_at FROM click_events
       WHERE workspace_id = ? AND occurred_at >= ? AND occurred_at < ?`)
-      .bind(range.startsAt, range.startsAt, range.startsAt, workspaceId, range.previousStartsAt, range.endsAt)
-      .first<{ current: number; previous: number; automated: number; last_event_at: number | null }>(),
+      .bind(range.startsAt, range.startsAt, range.startsAt, range.startsAt, range.startsAt, range.startsAt,
+        workspaceId, range.previousStartsAt, range.endsAt)
+      .first<{ current: number; previous: number; automated: number; current_sessions: number; previous_sessions: number;
+        session_attributed: number; last_event_at: number | null }>(),
     d1.prepare("SELECT COUNT(*) AS total FROM links WHERE workspace_id = ? AND status = 'active'").bind(workspaceId).first<{ total: number }>(),
     d1.prepare("SELECT COUNT(DISTINCT link_id) AS total FROM click_events WHERE workspace_id = ? AND occurred_at >= ? AND occurred_at < ?")
       .bind(workspaceId, range.startsAt, range.endsAt).first<{ total: number }>(),
@@ -157,12 +170,16 @@ export async function workspaceAnalytics(userId: string, workspaceId: string, re
       .all<{ id: string; name: string; current: number; previous: number }>(),
   ]);
   const clicks = comparePeriods(Number(overview?.current ?? 0), Number(overview?.previous ?? 0));
+  const sessions = comparePeriods(Number(overview?.current_sessions ?? 0), Number(overview?.previous_sessions ?? 0));
+  const sessionAttributed = Number(overview?.session_attributed ?? 0);
   const sources = hydrateBreakdown(sourcesRaw, sourceLabel);
   const devices = hydrateBreakdown(devicesRaw, deviceLabel);
   const automatedClicks = Number(overview?.automated ?? 0);
   const partial = {
     range,
-    metrics: { clicks, activeLinks: Number(activeLinks?.total ?? 0), linksWithTraffic: Number(linksWithTraffic?.total ?? 0),
+    metrics: { clicks, sessions, sessionCoverage: clicks.current ? Math.round(sessionAttributed / clicks.current * 1000) / 10 : 0,
+      clicksPerSession: sessions.current ? Math.round(sessionAttributed / sessions.current * 10) / 10 : 0,
+      activeLinks: Number(activeLinks?.total ?? 0), linksWithTraffic: Number(linksWithTraffic?.total ?? 0),
       automatedClicks, automatedShare: clicks.current ? Math.round(automatedClicks / clicks.current * 1000) / 10 : 0,
       lastEventAt: overview?.last_event_at ? Number(overview.last_event_at) : null },
     series, sources, devices,
@@ -171,7 +188,9 @@ export async function workspaceAnalytics(userId: string, workspaceId: string, re
     campaigns: campaigns.results.map((row) => ({ id: row.id, name: row.name, ...comparePeriods(Number(row.current), Number(row.previous)) })),
   };
   return { ...partial, insights: buildInsights(partial), limitations: [
-    "Cliques representam eventos registrados; visitantes únicos e sessões ainda não são inferidos.",
+    "Cliques representam eventos registrados; visitantes únicos ainda não são inferidos.",
+    "Sessões observadas usam um identificador first-party opaco por 30 minutos; GPC e DNT são respeitados e reduzem a cobertura.",
+    "Sessões não equivalem a visitantes únicos e podem reiniciar por navegador, domínio, bloqueio ou expiração do cookie.",
     "Origem depende do referrer enviado pelo navegador e pode aparecer como Direto.",
     "Automação conhecida usa sinais do user-agent minimizado; não equivale a detecção completa de fraude.",
   ] };
@@ -183,10 +202,14 @@ export async function linkAnalytics(userId: string, linkId: string, requestedDay
   const d1 = database();
   const [overview, series, sourcesRaw, devicesRaw, recent] = await Promise.all([
     d1.prepare(`SELECT SUM(CASE WHEN occurred_at >= ? THEN 1 ELSE 0 END) AS current,
-      SUM(CASE WHEN occurred_at < ? THEN 1 ELSE 0 END) AS previous FROM click_events
+      SUM(CASE WHEN occurred_at < ? THEN 1 ELSE 0 END) AS previous,
+      COUNT(DISTINCT CASE WHEN occurred_at >= ? THEN session_id_hash END) AS current_sessions,
+      COUNT(DISTINCT CASE WHEN occurred_at < ? THEN session_id_hash END) AS previous_sessions,
+      SUM(CASE WHEN occurred_at >= ? AND session_id_hash IS NOT NULL THEN 1 ELSE 0 END) AS session_attributed FROM click_events
       WHERE workspace_id = ? AND link_id = ? AND occurred_at >= ? AND occurred_at < ?`)
-      .bind(range.startsAt, range.startsAt, link.workspace_id, link.id, range.previousStartsAt, range.endsAt)
-      .first<{ current: number; previous: number }>(),
+      .bind(range.startsAt, range.startsAt, range.startsAt, range.startsAt, range.startsAt,
+        link.workspace_id, link.id, range.previousStartsAt, range.endsAt)
+      .first<{ current: number; previous: number; current_sessions: number; previous_sessions: number; session_attributed: number }>(),
     seriesFor(link.workspace_id, range, link.id),
     breakdownFor(link.workspace_id, range, "referrer_host", link.id),
     breakdownFor(link.workspace_id, range, "device_class", link.id),
@@ -194,7 +217,11 @@ export async function linkAnalytics(userId: string, linkId: string, requestedDay
       FROM click_events WHERE workspace_id = ? AND link_id = ? ORDER BY occurred_at DESC LIMIT 25`)
       .bind(link.workspace_id, link.id).all<{ id: string; occurred_at: number; referrer: string; device_class: string }>(),
   ]);
-  return { link, range, clicks: comparePeriods(Number(overview?.current ?? 0), Number(overview?.previous ?? 0)), series,
+  const clicks = comparePeriods(Number(overview?.current ?? 0), Number(overview?.previous ?? 0));
+  const sessions = comparePeriods(Number(overview?.current_sessions ?? 0), Number(overview?.previous_sessions ?? 0));
+  const sessionAttributed = Number(overview?.session_attributed ?? 0);
+  return { link, range, clicks, sessions, sessionCoverage: clicks.current ? Math.round(sessionAttributed / clicks.current * 1000) / 10 : 0,
+    clicksPerSession: sessions.current ? Math.round(sessionAttributed / sessions.current * 10) / 10 : 0, series,
     sources: hydrateBreakdown(sourcesRaw, sourceLabel), devices: hydrateBreakdown(devicesRaw, deviceLabel),
     recentEvents: recent.results.map((row) => ({ id: row.id, occurredAt: Number(row.occurred_at), referrer: sourceLabel(row.referrer), device: deviceLabel(row.device_class) })) };
 }

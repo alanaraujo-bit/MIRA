@@ -143,8 +143,10 @@ export const clickEvents = sqliteTable("click_events", {
   linkId: text("link_id").notNull().references(() => links.id, { onDelete: "cascade" }),
   referrerHost: text("referrer_host"),
   deviceClass: text("device_class", { enum: ["mobile", "desktop", "bot", "unknown"] }).notNull(),
+  sessionIdHash: text("session_id_hash"),
   occurredAt: integer("occurred_at").notNull(),
 }, (table) => [
   index("idx_click_events_workspace_time").on(table.workspaceId, table.occurredAt),
   index("idx_click_events_link_time").on(table.linkId, table.occurredAt),
+  index("idx_click_events_workspace_session_time").on(table.workspaceId, table.sessionIdHash, table.occurredAt),
 ]);

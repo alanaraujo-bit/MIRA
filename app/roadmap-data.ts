@@ -5,13 +5,15 @@ type Phase = { id: string; code: string; title: string; intent: string; mileston
 const task = (title: string, detail: string, status: Status = "queued", evidence?: string, blocker?: string): Task => ({ title, detail, status, evidence, blocker });
 
 export const project = {
-  release: "0.3.0-alpha.1", environment: "Vercel + Railway · público e operacional", commit: "main · 305a11b publicado",
+  release: "0.3.0-alpha.2", environment: "Vercel + Railway · candidata em validação", commit: "m3-analytics · candidata",
   liveUrl: "https://mira-link-intelligence.vercel.app",
-  updatedIso: "2026-08-24T16:03:00-03:00", updatedLabel: "24 ago 2026 · 16:03 BRT",
+  updatedIso: "2026-08-24T16:15:00-03:00", updatedLabel: "24 ago 2026 · 16:15 BRT",
   currentFocus: "Milestone 3 · Analytics de decisão",
-  currentDetail: "Analytics comparativo e Link Inspector estão ao vivo e reconciliados com eventos reais; o próximo gate do M3 é profundidade de audiência e inspeção visual.",
-  currentGate: "inspeção visual desktop/mobile + visitantes e sessões",
+  currentDetail: "Sessões observadas estão reconciliadas localmente com opt-out GPC/DNT e cobertura explícita; a candidata passa por publicação remota.",
+  currentGate: "deploy + smoke remoto + inspeção visual desktop/mobile",
   validations: [
+    { status: "done", title: "Sessão privacy-safe local", detail: "Três cliques produziram uma sessão, 66,7% de cobertura e 2 cliques por sessão; GPC/DNT removeu o cookie.", time: "24 ago" },
+    { status: "done", title: "Migration de sessão", detail: "Coluna opcional e índice composto foram gerados, inspecionados e aplicados de forma idempotente no Railway.", time: "24 ago" },
     { status: "done", title: "M3 alpha 1 publicado", detail: "Commit 305a11b recebeu estado Ready no Vercel e assumiu o alias público da Mira.", time: "24 ago" },
     { status: "done", title: "Analytics remoto reconciliado", detail: "Smoke público confirmou relatório, Inspector, Instagram, Mobile, 302, click persistido e isolamento no domínio final.", time: "24 ago" },
     { status: "done", title: "Pipeline M3 aprovado", detail: "GitHub Actions executou lint, build, 10 testes e smoke com PostgreSQL em 1m08s.", time: "24 ago" },
@@ -57,6 +59,7 @@ export const project = {
     { severity: "medium", code: "P2", title: "Inspeção visual indisponível", detail: "A conexão foi reavaliada e continua sem navegador controlável; o gate visual permanece aberto." },
     { severity: "low", code: "P3", title: "Clearance jurídico da marca", detail: "Busca formal de marca e domínio definitivo será necessária antes do lançamento comercial." },
     { severity: "low", code: "P4", title: "Advisories moderados no drizzle-kit", detail: "Quatro ocorrências de desenvolvimento vêm do loader interno; produção tem zero advisories e o fix automático exigiria downgrade incompatível. Monitorar atualização segura." },
+    { severity: "medium", code: "P5", title: "Controles de titular incompletos", detail: "Práticas atuais estão publicadas, mas exportação, exclusão self-service e consentimento configurável ainda não existem." },
   ],
   decisions: [
     { id: "001", title: "Mira é infraestrutura, não um encurtador", summary: "Link é um objeto versionado, programável e mensurável; slug e destino são apenas atributos.", status: "Aceita" },
@@ -68,6 +71,7 @@ export const project = {
     { id: "007", title: "PWA não armazena dados privados", summary: "Shell público pode usar cache; produto, APIs, autenticação e redirects permanecem network-only.", status: "Aceita" },
     { id: "008", title: "Escala progressiva na biblioteca", summary: "Links usam paginação keyset estável; favoritos são preferências pessoais e presets UTM pertencem ao Workspace.", status: "Aceita" },
     { id: "009", title: "Propriedade não equivale a ativação", summary: "TXT comprova controle do domínio; tráfego e SSL só recebem estado ativo depois de provisionamento público real.", status: "Aceita" },
+    { id: "010", title: "Sessão não é visitante", summary: "A Mira usa sessão opaca de 30 minutos, hash por Workspace e opt-out GPC/DNT; visitantes únicos não serão inferidos por fingerprint silencioso.", status: "Aceita" },
   ],
 };
 
@@ -102,8 +106,8 @@ export const phases: Phase[] = [
   ]},
   { id: "intelligence", code: "Fase 2", title: "Inteligência de tráfego", intent: "Transformar eventos confiáveis em entendimento, comparação e ação.", milestones: [
     { id: "m3", code: "M3", release: "Release 0.3.0", title: "Analytics de decisão", outcome: "O usuário entende o que mudou, por quê e onde agir.", exitCriteria: "Métricas reconciliadas, filtros temporais, comparação e drill-down testados com volume representativo.", tasks: [
-      task("Pipeline analítico", "Agregações, retenção, reprocessamento e reconciliação de contagens.", "active", "Consultas atuais reconciliam eventos reais em todas as dimensões; materialização, reprocessamento e escala continuam abertos."),
-      task("Tráfego e audiência", "Cliques, visitantes, sessões, origem, geografia aproximada e tecnologia.", "active", "Cliques, referrer e classe de dispositivo estão integrados; visitantes, sessões e geografia ainda não são inferidos."),
+      task("Pipeline analítico", "Agregações, retenção, reprocessamento e reconciliação de contagens.", "active", "Eventos incluem sessão opcional indexada e reconciliada; materialização, reprocessamento e escala continuam abertos."),
+      task("Tráfego e audiência", "Cliques, visitantes, sessões, origem, geografia aproximada e tecnologia.", "active", "Cliques, sessões observadas, cobertura, referrer e dispositivo estão integrados; visitantes e geografia continuam indisponíveis."),
       task("Comparações temporais", "Período anterior, tendências, deltas explicáveis e mudanças.", "active", "Janelas equivalentes de 7/30/90 dias, série, deltas e estados sem base foram executados contra PostgreSQL."),
       task("Qualidade de tráfego", "Humanos, bots conhecidos, suspeitos, repetições e confiança.", "active", "Automação conhecida e sua participação estão expostas com limitação explícita; suspeitos e anomalias ainda evoluirão."),
       task("Link Inspector", "Performance, routing, QR, UTM, saúde e histórico organizados.", "active", "Performance, origem, dispositivo, configuração, QR e eventos recentes estão integrados; routing, health, version history e gate visual seguem abertos."),

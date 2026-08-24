@@ -2,7 +2,7 @@
 
 Mira transforma links estáticos em infraestrutura programável. O repositório contém o Roadmap Live e um produto full-stack em evolução: identidade, Workspace, Links, Campaigns, organização por canal/tags/UTMs, QR integrado, redirect, evento de clique e resumo operacional baseados em dados reais.
 
-A candidata pública `0.3.0-alpha.1` acrescenta Analytics comparativo e Link Inspector ao runtime Next.js no Vercel, PostgreSQL persistente no Railway e autenticação própria da Mira. Cadastro, sessão, Workspace, Campaign, Link, redirect, clique, períodos comparáveis, origens, dispositivos, rankings, atividade recente, QR e domínio foram exercitados de ponta a ponta contra o banco real. Os milestones continuam ativos enquanto inspeção visual, escala analítica, recuperação/confirmação de conta e branded edge/SSL permanecerem abertos; o Roadmap não os apresenta como concluídos.
+A candidata pública `0.3.0-alpha.2` acrescenta sessões observadas privacy-safe ao Analytics comparativo e Link Inspector. O redirect usa um identificador opaco de 30 minutos, persiste apenas hash separado por Workspace, respeita GPC/DNT e informa cobertura sem chamar sessão de visitante. Cadastro, Workspace, Campaign, Link, três redirects, opt-out, Analytics, QR e domínio foram exercitados de ponta a ponta contra o PostgreSQL Railway. Os milestones continuam ativos enquanto inspeção visual, visitantes consentidos, escala analítica, recuperação/confirmação de conta e branded edge/SSL permanecerem abertos.
 
 ## Development
 

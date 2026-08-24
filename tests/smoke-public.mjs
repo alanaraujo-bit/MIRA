@@ -47,26 +47,42 @@ const redirect = await fetch(`${baseUrl}/go/${slug}`, { redirect: "manual", head
 assert.equal(redirect.status, 302);
 assert.match(redirect.headers.get("location") || "", /utm_source=qr/);
 assert.match(redirect.headers.get("x-mira-request-id") || "", /^[0-9a-f-]{36}$/);
+const trackingCookie = redirect.headers.get("set-cookie")?.split(";", 1)[0];
+assert.match(trackingCookie || "", /^mira_sid=/);
+const repeatedRedirect = await fetch(`${baseUrl}/go/${slug}`, { redirect: "manual", headers: { cookie: trackingCookie,
+  referer: "https://instagram.com/story", "user-agent": "Mozilla/5.0 (iPhone) Mobile" } });
+assert.equal(repeatedRedirect.status, 302);
+assert.match(repeatedRedirect.headers.get("set-cookie") || "", /^mira_sid=/);
+const optedOutRedirect = await fetch(`${baseUrl}/go/${slug}`, { redirect: "manual", headers: { cookie: trackingCookie,
+  referer: "https://instagram.com/story", "user-agent": "Mozilla/5.0 (iPhone) Mobile", "sec-gpc": "1", dnt: "1" } });
+assert.equal(optedOutRedirect.status, 302);
+assert.match(optedOutRedirect.headers.get("set-cookie") || "", /^mira_sid=; Path=\/; Max-Age=0/);
 const summary = await owner.request(`/api/analytics/summary?workspaceId=${workspace.id}`);
-assert.equal((await summary.json()).summary.clicks7d, 1);
+assert.equal((await summary.json()).summary.clicks7d, 3);
 const analyticsPage = await owner.request("/product/analytics", { headers: { accept: "text/html" } });
 assert.match(await analyticsPage.text(), /Reconciliando eventos/);
 const reportResponse = await owner.request(`/api/analytics/report?workspaceId=${workspace.id}&days=7`);
 const report = (await reportResponse.json()).report;
-assert.equal(report.metrics.clicks.current, 1);
+assert.equal(report.metrics.clicks.current, 3);
+assert.equal(report.metrics.sessions.current, 1);
+assert.equal(report.metrics.sessionCoverage, 66.7);
+assert.equal(report.metrics.clicksPerSession, 2);
 assert.equal(report.metrics.linksWithTraffic, 1);
 assert.equal(report.sources[0].label, "Instagram");
 assert.equal(report.devices[0].label, "Mobile");
 assert.equal(report.topLinks[0].id, link.id);
 assert.equal(report.campaigns[0].id, campaign.id);
-assert.equal(report.series.reduce((total, point) => total + point.current, 0), 1);
+assert.equal(report.series.reduce((total, point) => total + point.current, 0), 3);
 await owner.request(`/api/analytics/report?workspaceId=${workspace.id}&days=8`, {}, 400);
 await outsider.request(`/api/analytics/report?workspaceId=${workspace.id}&days=7`, {}, 403);
 const inspectorPage = await owner.request(`/product/links/${link.id}`, { headers: { accept: "text/html" } });
 assert.match(await inspectorPage.text(), /Lendo o Link/);
 const linkAnalyticsResponse = await owner.request(`/api/analytics/links/${link.id}?days=7`);
 const linkAnalytics = (await linkAnalyticsResponse.json()).analytics;
-assert.equal(linkAnalytics.clicks.current, 1);
+assert.equal(linkAnalytics.clicks.current, 3);
+assert.equal(linkAnalytics.sessions.current, 1);
+assert.equal(linkAnalytics.sessionCoverage, 66.7);
+assert.equal(linkAnalytics.clicksPerSession, 2);
 assert.equal(linkAnalytics.recentEvents[0].referrer, "Instagram");
 assert.equal(linkAnalytics.recentEvents[0].device, "Mobile");
 await outsider.request(`/api/analytics/links/${link.id}?days=7`, {}, 404);
@@ -85,5 +101,6 @@ await owner.request("/api/auth/login", { method: "POST", headers: jsonHeaders, b
 await owner.request("/product", { headers: { accept: "text/html" } });
 
 console.log(JSON.stringify({ account: email, workspace: workspace.id, campaign: campaign.id, link: link.id,
-  redirect: 302, clickPersisted: true, analytics: { report: "compared", inspector: "verified", source: "Instagram", device: "Mobile" },
+  redirect: 302, clickPersisted: true, analytics: { report: "compared", inspector: "verified", source: "Instagram", device: "Mobile",
+    sessions: 1, coverage: 66.7, gpc: "respected" },
   qr: "svg", domainDns: "checked", isolation: { workspace: 403, link: 404 }, session: "restored" }, null, 2));
