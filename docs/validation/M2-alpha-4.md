@@ -17,6 +17,13 @@ Data: 24 de agosto de 2026
 - Jornada contra o PostgreSQL Railway: cadastro, bootstrap, Campaign, Link, isolamento de Workspace, redirect 302, click persistido, analytics, QR, DNS, logout e login restaurado.
 - Controles negativos: acesso cruzado ao Workspace retorna 403 e acesso cruzado ao Link retorna 404.
 
+## Evidência publicada
+
+- Commit `42b3e2b` publicado pelo branch `main` através da integração GitHub → Vercel.
+- Deployment Vercel `dpl_6HsUdNDBj18CbHZeUoD5j2iAwWgE`: estado `Ready` e alias `https://mira-link-intelligence.vercel.app`.
+- Smoke remoto repetiu toda a jornada contra o domínio final e o PostgreSQL Railway.
+- GitHub Actions `32764213559`: install, lint, build, 8 testes e smoke persistente aprovados em 1m02s.
+
 ## Correções durante a validação
 
 - O runtime anterior dependia de D1 e identidade do preview privado; ambos foram substituídos na superfície Vercel por adaptador PostgreSQL e autenticação própria.

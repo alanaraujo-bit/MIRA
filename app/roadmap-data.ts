@@ -5,13 +5,16 @@ type Phase = { id: string; code: string; title: string; intent: string; mileston
 const task = (title: string, detail: string, status: Status = "queued", evidence?: string, blocker?: string): Task => ({ title, detail, status, evidence, blocker });
 
 export const project = {
-  release: "0.2.0-alpha.4", environment: "Vercel + Railway · preview público", commit: "main · GitHub conectado ao Vercel",
+  release: "0.2.0-alpha.4", environment: "Vercel + Railway · público e operacional", commit: "main · 42b3e2b publicado",
   liveUrl: "https://mira-link-intelligence.vercel.app",
-  updatedIso: "2026-08-24T15:38:00-03:00", updatedLabel: "24 ago 2026 · 15:38 BRT",
+  updatedIso: "2026-08-24T15:48:00-03:00", updatedLabel: "24 ago 2026 · 15:48 BRT",
   currentFocus: "Milestone 2 · Estabilização pública",
-  currentDetail: "Runtime migrado para Next.js nativo, autenticação própria e PostgreSQL Railway; publicação e validação remota estão em execução.",
-  currentGate: "deploy Git + smoke remoto + inspeção visual",
+  currentDetail: "Alpha 4 está ao vivo com autenticação própria, Next.js no Vercel e PostgreSQL Railway; a evolução funcional retorna ao M2/M3 depois do gate visual.",
+  currentGate: "inspeção visual desktop/mobile + recuperação de conta",
   validations: [
+    { status: "done", title: "Deploy Git em produção", detail: "Push do commit 42b3e2b no main acionou o Vercel e recebeu estado Ready no alias público definitivo.", time: "24 ago" },
+    { status: "done", title: "Smoke remoto público", detail: "A jornada completa foi repetida em mira-link-intelligence.vercel.app; 302 e click persistido, QR, DNS, sessão e isolamento passaram.", time: "24 ago" },
+    { status: "done", title: "Pipeline remoto aprovado", detail: "GitHub Actions executou install, lint, build, 8 testes e smoke persistente com PostgreSQL em 1m02s.", time: "24 ago" },
     { status: "done", title: "Runtime Vercel aprovado", detail: "Build Next.js 16 nativo compilou com TypeScript e gerou 28 rotas sem depender do runtime privado anterior.", time: "24 ago" },
     { status: "done", title: "PostgreSQL Railway real", detail: "Instância persistente provisionada com volume dedicado e conexão TLS; schema inicializado de forma idempotente.", time: "24 ago" },
     { status: "done", title: "Jornada pública local", detail: "Cadastro → sessão → Workspace → Campaign → Link → 302 → click → analytics → QR → logout/login passou contra o Railway; isolamento 403/404 confirmado.", time: "24 ago" },
@@ -76,7 +79,7 @@ export const phases: Phase[] = [
   ]},
   { id: "core", code: "Fase 1", title: "Núcleo utilizável", intent: "Entregar conta, Workspace, link, redirect e evento confiável em um fluxo real.", milestones: [
     { id: "m1", code: "M1", release: "Release 0.1.0", title: "Primeiro link real", outcome: "Um usuário cria conta, publica um link e acompanha cliques reais.", exitCriteria: "Fluxo publicado e testado: cadastro → Workspace → criar → redirecionar → registrar evento → visualizar resultado.", tasks: [
-      task("Fundação full-stack e ambientes", "Aplicação, banco, migrations, configuração segura, preview e CI.", "active", "GitHub conectado ao Vercel, PostgreSQL Railway ativo e build nativo aprovado; deploy e workflow remotos estão no gate atual."),
+      task("Fundação full-stack e ambientes", "Aplicação, banco, migrations, configuração segura, preview e CI.", "active", "GitHub → Vercel e PostgreSQL Railway estão operacionais; pipeline remoto passou. Migrations versionadas e observabilidade aprofundada continuam abertas."),
       task("Autenticação e sessões", "Cadastro, login, confirmação, recuperação, sessões seguras e estados de erro.", "active", "Cadastro/login públicos, bcrypt, cookie HTTP-only, expiração, logout e rate limit foram exercitados; confirmação e recuperação ainda não existem."),
       task("Workspace e autorização", "Isolamento multi-tenant, ownership e verificação de acesso em todas as operações.", "active", "Membership server-side cobre leitura e mutação; tentativas cross-Workspace retornam 403/404."),
       task("CRUD de Links", "Criar, editar, arquivar, buscar e copiar links com validação de destino e slug.", "active", "Fluxo completo publicado no alpha 2; inspeção visual e jornada autenticada hospedada ainda pendentes."),
