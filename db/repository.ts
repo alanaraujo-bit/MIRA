@@ -1,9 +1,10 @@
 import { env } from "cloudflare:workers";
 import type { ChatGPTUser } from "../app/chatgpt-auth";
-import { classifyDevice, normalizeSlug, referrerHost, validateDestination } from "../lib/link-rules";
+import { normalizeSlug, validateDestination } from "../lib/link-rules";
 
-type WorkspaceRow = { id: string; name: string; slug: string; role: string };
-type LinkRow = {
+export type WorkspaceRole = "owner" | "admin" | "editor" | "viewer";
+type WorkspaceRow = { id: string; name: string; slug: string; role: WorkspaceRole };
+export type LinkRow = {
   id: string;
   workspace_id: string;
   title: string;
@@ -142,18 +143,35 @@ export async function requireWorkspace(userId: string, workspaceId: string): Pro
   return row;
 }
 
-export async function listLinks(userId: string, workspaceId: string): Promise<LinkRow[]> {
+function canWrite(role: WorkspaceRole): boolean {
+  return role === "owner" || role === "admin" || role === "editor";
+}
+
+function escapeLike(value: string): string {
+  return value.replace(/[\\%_]/g, "\\$&");
+}
+
+export async function listLinks(
+  userId: string,
+  workspaceId: string,
+  options: { query?: string; status?: "all" | "active" | "archived" } = {},
+): Promise<LinkRow[]> {
   await requireWorkspace(userId, workspaceId);
+  const query = options.query?.trim().toLocaleLowerCase("pt-BR").slice(0, 100) ?? "";
+  const pattern = `%${escapeLike(query)}%`;
+  const status = options.status ?? "all";
   const result = await database().prepare(`
     SELECT l.id, l.workspace_id, l.title, l.destination_url, l.slug, l.status,
            l.created_at, l.updated_at, COUNT(ce.id) AS clicks
     FROM links l
     LEFT JOIN click_events ce ON ce.link_id = l.id
     WHERE l.workspace_id = ?
+      AND (? = '' OR LOWER(l.title) LIKE ? ESCAPE '\\' OR LOWER(l.slug) LIKE ? ESCAPE '\\' OR LOWER(l.destination_url) LIKE ? ESCAPE '\\')
+      AND (? = 'all' OR l.status = ?)
     GROUP BY l.id
     ORDER BY l.updated_at DESC
     LIMIT 100
-  `).bind(workspaceId).all<LinkRow>();
+  `).bind(workspaceId, query, pattern, pattern, pattern, status, status).all<LinkRow>();
   return result.results.map((row) => ({ ...row, clicks: Number(row.clicks) }));
 }
 
@@ -194,34 +212,62 @@ export async function createLink(input: {
   };
 }
 
-export async function resolveLink(slug: string): Promise<Pick<LinkRow, "id" | "workspace_id" | "destination_url" | "status"> | null> {
+async function linkForMember(userId: string, linkId: string): Promise<LinkRow & { role: WorkspaceRole }> {
   await ensureSchema();
-  return database().prepare(`
-    SELECT id, workspace_id, destination_url, status
-    FROM links
-    WHERE slug = ?
+  const row = await database().prepare(`
+    SELECT l.id, l.workspace_id, l.title, l.destination_url, l.slug, l.status,
+           l.created_at, l.updated_at, wm.role,
+           (SELECT COUNT(*) FROM click_events ce WHERE ce.link_id = l.id) AS clicks
+    FROM links l
+    JOIN workspace_members wm ON wm.workspace_id = l.workspace_id
+    WHERE l.id = ? AND wm.user_id = ?
     LIMIT 1
-  `).bind(slug).first();
+  `).bind(linkId, userId).first<LinkRow & { role: WorkspaceRole }>();
+  if (!row) throw new Error("LINK_NOT_FOUND");
+  return { ...row, clicks: Number(row.clicks) };
 }
 
-export async function recordClick(input: {
+export async function updateLink(input: {
+  userId: string;
   linkId: string;
-  workspaceId: string;
-  referrer: string | null;
-  userAgent: string | null;
-}): Promise<void> {
-  await ensureSchema();
-  await database().prepare(`
-    INSERT INTO click_events (id, workspace_id, link_id, referrer_host, device_class, occurred_at)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `).bind(
-    crypto.randomUUID(),
-    input.workspaceId,
-    input.linkId,
-    referrerHost(input.referrer),
-    classifyDevice(input.userAgent),
-    Date.now(),
-  ).run();
+  title?: string;
+  destinationUrl?: string;
+  slug?: string;
+  status?: "active" | "archived";
+  expectedUpdatedAt: number;
+}): Promise<LinkRow> {
+  const existing = await linkForMember(input.userId, input.linkId);
+  if (!canWrite(existing.role)) throw new Error("WORKSPACE_READ_ONLY");
+
+  const title = input.title === undefined ? existing.title : input.title.trim().slice(0, 100);
+  if (!title) throw new Error("Dê um nome ao link.");
+  const destinationUrl = input.destinationUrl === undefined
+    ? existing.destination_url
+    : validateDestination(input.destinationUrl);
+  const slug = input.slug === undefined ? existing.slug : normalizeSlug(input.slug.trim());
+  if (slug.length < 3 || slug.length > 48) throw new Error("O slug deve ter entre 3 e 48 caracteres.");
+  const status = input.status ?? existing.status;
+  if (status === "blocked") throw new Error("Links bloqueados exigem revisão interna.");
+  const expectedUpdatedAt = input.expectedUpdatedAt;
+  const now = Math.max(Date.now(), expectedUpdatedAt + 1);
+
+  try {
+    const result = await database().prepare(`
+      UPDATE links
+      SET title = ?, destination_url = ?, slug = ?, status = ?, updated_at = ?
+      WHERE id = ? AND workspace_id = ? AND updated_at = ?
+    `).bind(title, destinationUrl, slug, status, now, existing.id, existing.workspace_id, expectedUpdatedAt).run();
+    if (!result.meta.changes) throw new Error("LINK_CONFLICT");
+  } catch (error) {
+    const message = String(error).toLowerCase();
+    if (message.includes("unique")) throw new Error("Este slug já está em uso.");
+    throw error;
+  }
+
+  const updated = await linkForMember(input.userId, input.linkId);
+  const { role: _role, ...link } = updated;
+  void _role;
+  return link;
 }
 
 export async function workspaceSummary(userId: string, workspaceId: string) {

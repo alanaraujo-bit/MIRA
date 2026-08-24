@@ -30,10 +30,16 @@ test("server-renders the Mira Roadmap Live", async () => {
 });
 
 test("ships product metadata, PWA files and truthful status language", async () => {
-  const [page, product, repository, migration, layout, data, manifest, serviceWorker, social] = await Promise.all([
+  const [page, product, repository, dataPlane, worker, patchRoute, responseHelpers, iconRoute, offlinePage, migration, layout, data, manifest, serviceWorker, social] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/product/product-app.tsx", import.meta.url), "utf8"),
     readFile(new URL("../db/repository.ts", import.meta.url), "utf8"),
+    readFile(new URL("../db/data-plane.ts", import.meta.url), "utf8"),
+    readFile(new URL("../worker/index.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/links/[id]/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/response.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/icon/route.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/offline/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../drizzle/0000_gorgeous_shen.sql", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/roadmap-data.ts", import.meta.url), "utf8"),
@@ -47,16 +53,32 @@ test("ships product metadata, PWA files and truthful status language", async () 
   assert.match(page, /serviceWorker/);
   assert.match(product, /Nenhum dado de demonstração/);
   assert.match(product, /\/api\/bootstrap/);
+  assert.match(product, /Buscar por nome, slug ou destino/);
+  assert.match(product, /Arquivar/);
   assert.match(repository, /WORKSPACE_FORBIDDEN/);
-  assert.match(repository, /INSERT INTO click_events/);
+  assert.match(repository, /LINK_CONFLICT/);
+  assert.match(dataPlane, /INSERT OR IGNORE INTO click_events/);
+  assert.match(worker, /ctx\.waitUntil\(recordClick/);
+  assert.match(worker, /server-timing/);
+  assert.match(worker, /content-security-policy/);
+  assert.match(patchRoute, /export async function PATCH/);
+  assert.match(responseHelpers, /sec-fetch-site/);
+  assert.match(responseHelpers, /application\/json/);
+  assert.match(iconRoute, /ImageResponse/);
+  assert.match(offlinePage, /Seus links continuam no ar/);
   assert.match(migration, /CREATE TABLE `workspace_members`/);
   assert.match(migration, /CREATE UNIQUE INDEX `idx_links_slug`/);
   assert.match(layout, /openGraph/);
   assert.match(layout, /summary_large_image/);
   assert.match(data, /Inspeção visual indisponível/);
   assert.match(data, /task\("Validar desktop, mobile e PWA"[^\n]+"blocked"/);
-  assert.equal(JSON.parse(manifest).display, "standalone");
+  const parsedManifest = JSON.parse(manifest);
+  assert.equal(parsedManifest.display, "standalone");
+  assert.equal(parsedManifest.start_url, "/product");
+  assert.equal(parsedManifest.icons[0].type, "image/png");
   assert.match(serviceWorker, /caches\.open/);
+  assert.match(serviceWorker, /isSensitive/);
+  assert.match(serviceWorker, /url\.pathname\.startsWith\("\/api\/"\)/);
   assert.equal(social, undefined);
   await assert.rejects(access(new URL("../app/_sites-preview", import.meta.url)));
 });

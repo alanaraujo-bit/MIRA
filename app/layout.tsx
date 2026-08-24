@@ -16,9 +16,9 @@ export async function generateMetadata(): Promise<Metadata> {
     metadataBase: base,
     title: "Mira — Roadmap Live",
     description: "Acompanhamento verificável da construção da Mira Link Intelligence.",
-    applicationName: "Mira Roadmap Live",
+    applicationName: "Mira Link Intelligence",
     manifest: "/manifest.webmanifest",
-    icons: { icon: "/favicon.svg", shortcut: "/favicon.svg" },
+    icons: { icon: "/api/icon", shortcut: "/api/icon", apple: "/api/icon" },
     openGraph: { title: "Mira — Roadmap Live", description: "Infraestrutura programável para cada link.", images: [{ url: socialImage, width: 1731, height: 907 }] },
     twitter: { card: "summary_large_image", title: "Mira — Roadmap Live", description: "Infraestrutura programável para cada link.", images: [socialImage] },
   };

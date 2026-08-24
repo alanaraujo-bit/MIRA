@@ -5,12 +5,12 @@ type Phase = { id: string; code: string; title: string; intent: string; mileston
 const task = (title: string, detail: string, status: Status = "queued", evidence?: string, blocker?: string): Task => ({ title, detail, status, evidence, blocker });
 
 export const project = {
-  release: "0.1.0-alpha.1", environment: "Sites · privado", commit: "main · M1 alpha",
+  release: "0.1.0-alpha.2", environment: "Sites · privado", commit: "main · M1 alpha 2",
   liveUrl: "https://mira-link-intelligence.alanvitoraraujo1a.chatgpt.site",
-  updatedIso: "2026-08-24T13:31:00-03:00", updatedLabel: "24 ago 2026 · 13:31 BRT",
+  updatedIso: "2026-08-24T14:07:00-03:00", updatedLabel: "24 ago 2026 · 14:07 BRT",
   currentFocus: "Milestone 1 · Primeiro link real",
-  currentDetail: "Persistência D1, identidade, isolamento de Workspace, criação de Link, redirect e clique real.",
-  currentGate: "fluxo hospedado + inspeção visual",
+  currentDetail: "CRUD seguro de Links, busca persistente, redirect assíncrono, PWA privada e contratos de produção.",
+  currentGate: "publicação + inspeção visual",
   validations: [
     { status: "done", title: "Pesquisa inicial da marca", detail: "Triagem pública de categoria concluída; clearance jurídico segue pendente.", time: "24 ago" },
     { status: "done", title: "Servidor de preview", detail: "Base oficial de publicação inicializada e servindo localmente.", time: "24 ago" },
@@ -21,10 +21,14 @@ export const project = {
     { status: "done", title: "Controles negativos", detail: "Acesso cruzado 403, destino privado 400 e slug inexistente 404 validados.", time: "24 ago" },
     { status: "done", title: "M1 alpha publicado", detail: "Versão 3 publicada com sucesso no ambiente privado, ligada ao commit 5d6a2c7.", time: "24 ago" },
     { status: "done", title: "D1 hospedado verificado", detail: "Binding DB ativo com users, workspaces, workspace_members, links e click_events após deploy.", time: "24 ago" },
+    { status: "done", title: "CRUD M1 local", detail: "Criar, buscar, editar, arquivar, restaurar e copiar exercitados; conflito stale-write retorna 409.", time: "24 ago" },
+    { status: "done", title: "Redirect fora do caminho de ingestão", detail: "302 inclui request ID e timing; click é persistido via waitUntil com INSERT OR IGNORE.", time: "24 ago" },
+    { status: "done", title: "Proteções de write", detail: "Cross-site 403, content type inválido 415, acesso cruzado 403/404 e destino privado 400.", time: "24 ago" },
+    { status: "done", title: "PWA sem cache sensível", detail: "Instalação abre o produto; API, produto autenticado e redirects usam network-only com fallback offline seguro.", time: "24 ago" },
   ],
   issues: [
     { severity: "medium", code: "P1", title: "Redirect público ainda indisponível", detail: "O preview atual é owner-only; links distribuíveis exigem uma superfície pública separada e seu gate de acesso." },
-    { severity: "medium", code: "P2", title: "Inspeção visual indisponível", detail: "Nenhum navegador controlável está disponível nesta sessão; o gate visual permanece aberto." },
+    { severity: "medium", code: "P2", title: "Inspeção visual indisponível", detail: "A conexão foi reavaliada e continua sem navegador controlável; o gate visual permanece aberto." },
     { severity: "low", code: "P3", title: "Clearance jurídico da marca", detail: "Busca formal de marca e domínio definitivo será necessária antes do lançamento comercial." },
   ],
   decisions: [
@@ -33,6 +37,8 @@ export const project = {
     { id: "003", title: "Privacidade por minimização", summary: "Coleta necessária, precisão comunicada honestamente, retenção por plano e controles por Workspace.", status: "Aceita" },
     { id: "004", title: "Progresso deriva de evidência", summary: "Tarefas parciais não contam; milestones fecham com execução, teste, inspeção e publicação.", status: "Aceita" },
     { id: "005", title: "Identidade do preview vem da plataforma", summary: "SIWC identifica o usuário; autorização de Workspace continua explícita e server-side. Autenticação pública será confirmada antes do lançamento aberto.", status: "Aceita" },
+    { id: "006", title: "Redirect possui dependência mínima", summary: "O worker consulta apenas o módulo do data plane e devolve o 302 antes de aguardar a persistência idempotente do evento.", status: "Aceita" },
+    { id: "007", title: "PWA não armazena dados privados", summary: "Shell público pode usar cache; produto, APIs, autenticação e redirects permanecem network-only.", status: "Aceita" },
   ],
 };
 
@@ -49,13 +55,13 @@ export const phases: Phase[] = [
   ]},
   { id: "core", code: "Fase 1", title: "Núcleo utilizável", intent: "Entregar conta, Workspace, link, redirect e evento confiável em um fluxo real.", milestones: [
     { id: "m1", code: "M1", release: "Release 0.1.0", title: "Primeiro link real", outcome: "Um usuário cria conta, publica um link e acompanha cliques reais.", exitCriteria: "Fluxo publicado e testado: cadastro → Workspace → criar → redirecionar → registrar evento → visualizar resultado.", tasks: [
-      task("Fundação full-stack e ambientes", "Aplicação, banco, migrations, configuração segura, preview e CI.", "active", "Build, publicação alpha e schema D1 hospedado aprovados; pipeline CI ainda pendente."),
-      task("Autenticação e sessões", "Cadastro, login, confirmação, recuperação, sessões seguras e estados de erro.", "active", "SIWC server-side integrado; jornada real em produção e modelo público ainda precisam de validação."),
-      task("Workspace e autorização", "Isolamento multi-tenant, ownership e verificação de acesso em todas as operações.", "active", "Membership persistente e tentativa cross-Workspace bloqueada com 403; cobertura será ampliada."),
-      task("CRUD de Links", "Criar, editar, arquivar, buscar e copiar links com validação de destino e slug.", "active", "Create/list/copy reais; edição, arquivo e busca permanecem pendentes."),
-      task("Redirect crítico", "Resolução de domínio/slug, cache, fallback seguro e baixa latência observável.", "active", "302 e 404 validados localmente; superfície pública, cache e observabilidade ainda pendentes."),
-      task("Ingestão de click", "Registro assíncrono idempotente com minimização e classificação inicial.", "active", "Evento real persistido sem IP bruto; desacoplamento e idempotência ainda pendentes."),
-      task("Dashboard de primeiro valor", "Tráfego real, links recentes, atenção e próximos passos.", "active", "Shell conectado a dados reais com loading, empty e error; inspeção visual ainda pendente."),
+      task("Fundação full-stack e ambientes", "Aplicação, banco, migrations, configuração segura, preview e CI.", "active", "Build, D1 e deploy anterior aprovados; workflow de qualidade definido, ainda sem execução remota comprovada."),
+      task("Autenticação e sessões", "Cadastro, login, confirmação, recuperação, sessões seguras e estados de erro.", "active", "SIWC e guards same-origin integrados; jornada hospedada e modelo público ainda precisam de validação."),
+      task("Workspace e autorização", "Isolamento multi-tenant, ownership e verificação de acesso em todas as operações.", "active", "Membership server-side cobre leitura e mutação; tentativas cross-Workspace retornam 403/404."),
+      task("CRUD de Links", "Criar, editar, arquivar, buscar e copiar links com validação de destino e slug.", "active", "Fluxo completo e conflito 409 aprovados localmente; publicação e inspeção visual ainda pendentes."),
+      task("Redirect crítico", "Resolução de domínio/slug, cache, fallback seguro e baixa latência observável.", "active", "302/404, timing, request ID e no-store aprovados; superfície pública continua bloqueada."),
+      task("Ingestão de click", "Registro assíncrono idempotente com minimização e classificação inicial.", "active", "waitUntil + INSERT OR IGNORE aprovados localmente, sem IP ou user-agent bruto; deploy pendente."),
+      task("Dashboard de primeiro valor", "Tráfego real, links recentes, atenção e próximos passos.", "active", "Busca, filtros, edição, estados, PWA e offline integrados; inspeção visual permanece bloqueada."),
     ] },
     { id: "m2", code: "M2", release: "Release 0.2.0", title: "Organização profissional", outcome: "Links operam em campanhas, tags, domínios e sistemas de busca eficientes.", exitCriteria: "Busca, filtros, campanhas e domínio base funcionam com dados reais e conjuntos grandes paginados.", tasks: [
       task("Campaigns de primeira classe", "Criação, canais, links associados e visão consolidada inicial."),

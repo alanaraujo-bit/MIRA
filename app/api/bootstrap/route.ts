@@ -1,10 +1,12 @@
 import { getChatGPTUser } from "../../chatgpt-auth";
 import { ensureDefaultWorkspace, listWorkspaces } from "../../../db/repository";
-import { apiError, errorResponse } from "../response";
+import { apiError, errorResponse, writeRequestGuard } from "../response";
 
 export const dynamic = "force-dynamic";
 
-export async function POST() {
+export async function POST(request: Request) {
+  const guard = writeRequestGuard(request);
+  if (guard) return guard;
   const user = await getChatGPTUser();
   if (!user) return apiError("Autenticação necessária.", 401);
   try {

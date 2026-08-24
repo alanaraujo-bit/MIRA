@@ -1,10 +1,21 @@
 {
-  "name": "Mira Roadmap Live",
+  "name": "Mira Link Intelligence",
   "short_name": "Mira",
-  "description": "Acompanhamento verificável da construção da Mira Link Intelligence.",
-  "start_url": "/",
+  "description": "Crie, controle e acompanhe links programáveis em qualquer dispositivo.",
+  "id": "/product",
+  "start_url": "/product",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "any",
   "background_color": "#f3f1eb",
   "theme_color": "#182019",
-  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+  "categories": ["business", "productivity", "utilities"],
+  "icons": [
+    { "src": "/api/icon", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/api/icon", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Criar Link", "short_name": "Novo Link", "url": "/product#new-link" },
+    { "name": "Links recentes", "short_name": "Links", "url": "/product#links" }
+  ]
 }
