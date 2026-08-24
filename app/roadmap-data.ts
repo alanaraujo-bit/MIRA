@@ -7,10 +7,10 @@ const task = (title: string, detail: string, status: Status = "queued", evidence
 export const project = {
   release: "0.1.0-alpha.2", environment: "Sites · privado", commit: "main · M1 alpha 2",
   liveUrl: "https://mira-link-intelligence.alanvitoraraujo1a.chatgpt.site",
-  updatedIso: "2026-08-24T14:07:00-03:00", updatedLabel: "24 ago 2026 · 14:07 BRT",
+  updatedIso: "2026-08-24T14:11:00-03:00", updatedLabel: "24 ago 2026 · 14:11 BRT",
   currentFocus: "Milestone 1 · Primeiro link real",
   currentDetail: "CRUD seguro de Links, busca persistente, redirect assíncrono, PWA privada e contratos de produção.",
-  currentGate: "publicação + inspeção visual",
+  currentGate: "fluxo hospedado + inspeção visual",
   validations: [
     { status: "done", title: "Pesquisa inicial da marca", detail: "Triagem pública de categoria concluída; clearance jurídico segue pendente.", time: "24 ago" },
     { status: "done", title: "Servidor de preview", detail: "Base oficial de publicação inicializada e servindo localmente.", time: "24 ago" },
@@ -25,6 +25,7 @@ export const project = {
     { status: "done", title: "Redirect fora do caminho de ingestão", detail: "302 inclui request ID e timing; click é persistido via waitUntil com INSERT OR IGNORE.", time: "24 ago" },
     { status: "done", title: "Proteções de write", detail: "Cross-site 403, content type inválido 415, acesso cruzado 403/404 e destino privado 400.", time: "24 ago" },
     { status: "done", title: "PWA sem cache sensível", detail: "Instalação abre o produto; API, produto autenticado e redirects usam network-only com fallback offline seguro.", time: "24 ago" },
+    { status: "done", title: "M1 alpha 2 publicado", detail: "Versão 5 publicada com sucesso; artefato ligado ao commit eb51669 e binding D1 preservado.", time: "24 ago" },
   ],
   issues: [
     { severity: "medium", code: "P1", title: "Redirect público ainda indisponível", detail: "O preview atual é owner-only; links distribuíveis exigem uma superfície pública separada e seu gate de acesso." },
@@ -55,13 +56,13 @@ export const phases: Phase[] = [
   ]},
   { id: "core", code: "Fase 1", title: "Núcleo utilizável", intent: "Entregar conta, Workspace, link, redirect e evento confiável em um fluxo real.", milestones: [
     { id: "m1", code: "M1", release: "Release 0.1.0", title: "Primeiro link real", outcome: "Um usuário cria conta, publica um link e acompanha cliques reais.", exitCriteria: "Fluxo publicado e testado: cadastro → Workspace → criar → redirecionar → registrar evento → visualizar resultado.", tasks: [
-      task("Fundação full-stack e ambientes", "Aplicação, banco, migrations, configuração segura, preview e CI.", "active", "Build, D1 e deploy anterior aprovados; workflow de qualidade definido, ainda sem execução remota comprovada."),
+      task("Fundação full-stack e ambientes", "Aplicação, banco, migrations, configuração segura, preview e CI.", "active", "Alpha 2 e D1 hospedados; workflow de qualidade definido, ainda sem execução remota comprovada."),
       task("Autenticação e sessões", "Cadastro, login, confirmação, recuperação, sessões seguras e estados de erro.", "active", "SIWC e guards same-origin integrados; jornada hospedada e modelo público ainda precisam de validação."),
       task("Workspace e autorização", "Isolamento multi-tenant, ownership e verificação de acesso em todas as operações.", "active", "Membership server-side cobre leitura e mutação; tentativas cross-Workspace retornam 403/404."),
-      task("CRUD de Links", "Criar, editar, arquivar, buscar e copiar links com validação de destino e slug.", "active", "Fluxo completo e conflito 409 aprovados localmente; publicação e inspeção visual ainda pendentes."),
-      task("Redirect crítico", "Resolução de domínio/slug, cache, fallback seguro e baixa latência observável.", "active", "302/404, timing, request ID e no-store aprovados; superfície pública continua bloqueada."),
-      task("Ingestão de click", "Registro assíncrono idempotente com minimização e classificação inicial.", "active", "waitUntil + INSERT OR IGNORE aprovados localmente, sem IP ou user-agent bruto; deploy pendente."),
-      task("Dashboard de primeiro valor", "Tráfego real, links recentes, atenção e próximos passos.", "active", "Busca, filtros, edição, estados, PWA e offline integrados; inspeção visual permanece bloqueada."),
+      task("CRUD de Links", "Criar, editar, arquivar, buscar e copiar links com validação de destino e slug.", "active", "Fluxo completo publicado no alpha 2; inspeção visual e jornada autenticada hospedada ainda pendentes."),
+      task("Redirect crítico", "Resolução de domínio/slug, cache, fallback seguro e baixa latência observável.", "active", "302/404, timing, request ID e no-store publicados; superfície pública continua bloqueada."),
+      task("Ingestão de click", "Registro assíncrono idempotente com minimização e classificação inicial.", "active", "waitUntil + INSERT OR IGNORE publicados, sem IP ou user-agent bruto; clique hospedado ainda não exercitado."),
+      task("Dashboard de primeiro valor", "Tráfego real, links recentes, atenção e próximos passos.", "active", "Busca, filtros, edição, estados, PWA e offline publicados; inspeção visual permanece bloqueada."),
     ] },
     { id: "m2", code: "M2", release: "Release 0.2.0", title: "Organização profissional", outcome: "Links operam em campanhas, tags, domínios e sistemas de busca eficientes.", exitCriteria: "Busca, filtros, campanhas e domínio base funcionam com dados reais e conjuntos grandes paginados.", tasks: [
       task("Campaigns de primeira classe", "Criação, canais, links associados e visão consolidada inicial."),

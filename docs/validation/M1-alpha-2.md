@@ -27,7 +27,11 @@ Data: 24 de agosto de 2026.
 
 ## Gates abertos
 
-- publicação do alpha 2 e validação do artefato hospedado;
+- jornada autenticada exercitada contra o D1 hospedado;
 - inspeção visual desktop/mobile/PWA por navegador controlável;
 - redirect anônimo em superfície pública;
 - execução comprovada do workflow remoto.
+
+## Publicação
+
+O commit `eb51669` foi salvo como versão 5 e publicado com sucesso no ambiente privado. Após o deploy, o binding `DB` continuou expondo exatamente `users`, `workspaces`, `workspace_members`, `links` e `click_events`.
