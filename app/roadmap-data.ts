@@ -6,7 +6,8 @@ const task = (title: string, detail: string, status: Status = "queued", evidence
 
 export const project = {
   release: "0.0.1", environment: "Sites · privado", commit: "main · v0.0.1",
-  updatedIso: "2026-08-24T12:31:00-03:00", updatedLabel: "24 ago 2026 · 12:31 BRT",
+  liveUrl: "https://mira-link-intelligence.alanvitoraraujo1a.chatgpt.site",
+  updatedIso: "2026-08-24T12:34:00-03:00", updatedLabel: "24 ago 2026 · 12:34 BRT",
   currentFocus: "Milestone 0 · Fundação observável",
   currentDetail: "Roadmap Live, identidade da Mira, decisões técnicas e primeira publicação.",
   currentGate: "inspeção visual",
@@ -14,7 +15,7 @@ export const project = {
     { status: "done", title: "Pesquisa inicial da marca", detail: "Triagem pública de categoria concluída; clearance jurídico segue pendente.", time: "24 ago" },
     { status: "done", title: "Servidor de preview", detail: "Base oficial de publicação inicializada e servindo localmente.", time: "24 ago" },
     { status: "done", title: "Build e testes", detail: "Build de produção aprovado; 2/2 contratos de render, metadata e PWA passaram após correção.", time: "24 ago" },
-    { status: "active", title: "Publicação privada", detail: "Release validada e preparada para Sites; confirmação do deployment em andamento.", time: "24 ago" },
+    { status: "done", title: "Publicação privada", detail: "Deployment concluído com sucesso e URL da release vinculada ao Roadmap.", time: "24 ago" },
   ],
   issues: [
     { severity: "medium", code: "P2", title: "Inspeção visual indisponível", detail: "Nenhum navegador controlável está disponível nesta sessão; o gate visual permanece aberto." },
