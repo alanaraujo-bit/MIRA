@@ -5,9 +5,9 @@ type Phase = { id: string; code: string; title: string; intent: string; mileston
 const task = (title: string, detail: string, status: Status = "queued", evidence?: string, blocker?: string): Task => ({ title, detail, status, evidence, blocker });
 
 export const project = {
-  release: "0.2.0-alpha.1", environment: "Sites · privado", commit: "2c6dac2 · M2 alpha 1",
+  release: "0.2.0-alpha.1", environment: "Sites · privado", commit: "3f456e5 · M2 alpha 1 hardening",
   liveUrl: "https://mira-link-intelligence.alanvitoraraujo1a.chatgpt.site",
-  updatedIso: "2026-08-24T14:34:00-03:00", updatedLabel: "24 ago 2026 · 14:34 BRT",
+  updatedIso: "2026-08-24T14:39:00-03:00", updatedLabel: "24 ago 2026 · 14:39 BRT",
   currentFocus: "Milestone 2 · Organização profissional",
   currentDetail: "Campaigns, canais, tags, UTMs e QR rastreável publicados com schema D1 verificado.",
   currentGate: "jornada hospedada + inspeção visual",
@@ -30,11 +30,13 @@ export const project = {
     { status: "done", title: "Dependência QR auditada", detail: "Auditoria das dependências de produção retornou 0 vulnerabilidades conhecidas; build, lint e 6/6 testes passaram.", time: "24 ago" },
     { status: "done", title: "M2 alpha 1 publicado", detail: "Sites versão 7 publicada com sucesso a partir do commit 2c6dac2; URL privada preservada.", time: "24 ago" },
     { status: "done", title: "Schema M2 hospedado", detail: "D1 verificado com oito tabelas: Campaigns, tags e relação Link–tag estão presentes ao lado do núcleo M1.", time: "24 ago" },
+    { status: "done", title: "Toolchain endurecido", detail: "React/RSC, vinext, Vite e Cloudflare atualizados; 15 advisories altos removidos e corrida de empacotamento corrigida com regressão completa aprovada.", time: "24 ago" },
   ],
   issues: [
     { severity: "medium", code: "P1", title: "Redirect público ainda indisponível", detail: "O preview atual é owner-only; links distribuíveis exigem uma superfície pública separada e seu gate de acesso." },
     { severity: "medium", code: "P2", title: "Inspeção visual indisponível", detail: "A conexão foi reavaliada e continua sem navegador controlável; o gate visual permanece aberto." },
     { severity: "low", code: "P3", title: "Clearance jurídico da marca", detail: "Busca formal de marca e domínio definitivo será necessária antes do lançamento comercial." },
+    { severity: "low", code: "P4", title: "Advisories moderados no drizzle-kit", detail: "Quatro ocorrências de desenvolvimento vêm do loader interno; produção tem zero advisories e o fix automático exigiria downgrade incompatível. Monitorar atualização segura." },
   ],
   decisions: [
     { id: "001", title: "Mira é infraestrutura, não um encurtador", summary: "Link é um objeto versionado, programável e mensurável; slug e destino são apenas atributos.", status: "Aceita" },
