@@ -1,6 +1,7 @@
 import { database, ensurePlatformSchema } from "../../../db/postgres";
 import { recordClick, resolveLink } from "../../../db/data-plane";
 import { resolveSessionTracking } from "../../../lib/session-tracking";
+import { audienceContext } from "../../../lib/audience-context";
 
 export const dynamic = "force-dynamic";
 
@@ -13,9 +14,11 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
   if (!link || link.status !== "active") return unavailable();
   const eventId = crypto.randomUUID();
   const session = resolveSessionTracking(request.headers, link.workspace_id, process.env.NODE_ENV === "production");
+  const audience = audienceContext(request.headers);
   try {
     await recordClick(database(), { eventId, linkId: link.id, workspaceId: link.workspace_id,
-      referrer: request.headers.get("referer"), userAgent: request.headers.get("user-agent"), sessionIdHash: session.sessionIdHash });
+      referrer: request.headers.get("referer"), userAgent: request.headers.get("user-agent"), sessionIdHash: session.sessionIdHash,
+      ...audience });
   } catch (error) {
     console.error("click_ingest_failed", { eventId, linkId: link.id, error: error instanceof Error ? error.message : "unknown" });
   }

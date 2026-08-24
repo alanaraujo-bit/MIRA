@@ -144,9 +144,16 @@ export const clickEvents = sqliteTable("click_events", {
   referrerHost: text("referrer_host"),
   deviceClass: text("device_class", { enum: ["mobile", "desktop", "bot", "unknown"] }).notNull(),
   sessionIdHash: text("session_id_hash"),
+  countryCode: text("country_code").notNull().default("unknown"),
+  regionCode: text("region_code"),
+  languageCode: text("language_code").notNull().default("unknown"),
+  osFamily: text("os_family").notNull().default("Unknown"),
+  browserFamily: text("browser_family").notNull().default("Unknown"),
   occurredAt: integer("occurred_at").notNull(),
 }, (table) => [
   index("idx_click_events_workspace_time").on(table.workspaceId, table.occurredAt),
   index("idx_click_events_link_time").on(table.linkId, table.occurredAt),
   index("idx_click_events_workspace_session_time").on(table.workspaceId, table.sessionIdHash, table.occurredAt),
+  index("idx_click_events_workspace_country_time").on(table.workspaceId, table.countryCode, table.occurredAt),
+  index("idx_click_events_workspace_os_time").on(table.workspaceId, table.osFamily, table.occurredAt),
 ]);

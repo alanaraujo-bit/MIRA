@@ -33,10 +33,16 @@ export async function recordClick(database: D1Database, input: {
   referrer: string | null;
   userAgent: string | null;
   sessionIdHash?: string | null;
+  countryCode: string;
+  regionCode: string | null;
+  languageCode: string;
+  operatingSystem: string;
+  browser: string;
 }): Promise<void> {
   await database.prepare(`
-    INSERT OR IGNORE INTO click_events (id, workspace_id, link_id, referrer_host, device_class, session_id_hash, occurred_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT OR IGNORE INTO click_events (id, workspace_id, link_id, referrer_host, device_class, session_id_hash,
+      country_code, region_code, language_code, os_family, browser_family, occurred_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     input.eventId,
     input.workspaceId,
@@ -44,6 +50,11 @@ export async function recordClick(database: D1Database, input: {
     referrerHost(input.referrer),
     classifyDevice(input.userAgent),
     input.sessionIdHash ?? null,
+    input.countryCode,
+    input.regionCode,
+    input.languageCode,
+    input.operatingSystem,
+    input.browser,
     Date.now(),
   ).run();
 }

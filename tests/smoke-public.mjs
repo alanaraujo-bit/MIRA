@@ -43,18 +43,19 @@ assert.equal(link.campaign_id, campaign.id);
 await outsider.request(`/api/links?workspaceId=${workspace.id}`, {}, 403);
 await outsider.request(`/api/links/${link.id}`, { method: "PATCH", headers: jsonHeaders, body: JSON.stringify({ title: "Nope", expectedUpdatedAt: link.updated_at }) }, 404);
 
-const redirect = await fetch(`${baseUrl}/go/${slug}`, { redirect: "manual", headers: { referer: "https://instagram.com/story", "user-agent": "Mozilla/5.0 (iPhone) Mobile" } });
+const audienceHeaders = { referer: "https://instagram.com/story", "x-vercel-ip-country": "BR", "x-vercel-ip-country-region": "SP",
+  "accept-language": "pt-BR,pt;q=0.9", "user-agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Version/18.0 Safari/604.1" };
+const redirect = await fetch(`${baseUrl}/go/${slug}`, { redirect: "manual", headers: audienceHeaders });
 assert.equal(redirect.status, 302);
 assert.match(redirect.headers.get("location") || "", /utm_source=qr/);
 assert.match(redirect.headers.get("x-mira-request-id") || "", /^[0-9a-f-]{36}$/);
 const trackingCookie = redirect.headers.get("set-cookie")?.split(";", 1)[0];
 assert.match(trackingCookie || "", /^mira_sid=/);
-const repeatedRedirect = await fetch(`${baseUrl}/go/${slug}`, { redirect: "manual", headers: { cookie: trackingCookie,
-  referer: "https://instagram.com/story", "user-agent": "Mozilla/5.0 (iPhone) Mobile" } });
+const repeatedRedirect = await fetch(`${baseUrl}/go/${slug}`, { redirect: "manual", headers: { ...audienceHeaders, cookie: trackingCookie } });
 assert.equal(repeatedRedirect.status, 302);
 assert.match(repeatedRedirect.headers.get("set-cookie") || "", /^mira_sid=/);
-const optedOutRedirect = await fetch(`${baseUrl}/go/${slug}`, { redirect: "manual", headers: { cookie: trackingCookie,
-  referer: "https://instagram.com/story", "user-agent": "Mozilla/5.0 (iPhone) Mobile", "sec-gpc": "1", dnt: "1" } });
+const optedOutRedirect = await fetch(`${baseUrl}/go/${slug}`, { redirect: "manual", headers: { ...audienceHeaders, cookie: trackingCookie,
+  "sec-gpc": "1", dnt: "1" } });
 assert.equal(optedOutRedirect.status, 302);
 assert.match(optedOutRedirect.headers.get("set-cookie") || "", /^mira_sid=; Path=\/; Max-Age=0/);
 const summary = await owner.request(`/api/analytics/summary?workspaceId=${workspace.id}`);
@@ -70,6 +71,10 @@ assert.equal(report.metrics.clicksPerSession, 2);
 assert.equal(report.metrics.linksWithTraffic, 1);
 assert.equal(report.sources[0].label, "Instagram");
 assert.equal(report.devices[0].label, "Mobile");
+assert.match(report.countries[0].key, /^[A-Z]{2}$/);
+assert.equal(report.operatingSystems[0].label, "iOS");
+assert.equal(report.languages[0].key, "pt-BR");
+assert.equal(report.browsers[0].label, "Safari");
 assert.equal(report.topLinks[0].id, link.id);
 assert.equal(report.campaigns[0].id, campaign.id);
 assert.equal(report.series.reduce((total, point) => total + point.current, 0), 3);
@@ -85,6 +90,10 @@ assert.equal(linkAnalytics.sessionCoverage, 66.7);
 assert.equal(linkAnalytics.clicksPerSession, 2);
 assert.equal(linkAnalytics.recentEvents[0].referrer, "Instagram");
 assert.equal(linkAnalytics.recentEvents[0].device, "Mobile");
+assert.match(linkAnalytics.recentEvents[0].country, /\S/);
+assert.match(linkAnalytics.recentEvents[0].language, /português.*Brasil/i);
+assert.equal(linkAnalytics.recentEvents[0].operatingSystem, "iOS");
+assert.equal(linkAnalytics.recentEvents[0].browser, "Safari");
 await outsider.request(`/api/analytics/links/${link.id}?days=7`, {}, 404);
 const qr = await owner.request(`/api/links/${link.id}/qr?download=1`);
 assert.match(qr.headers.get("content-type") || "", /^image\/svg\+xml/);
@@ -101,6 +110,6 @@ await owner.request("/api/auth/login", { method: "POST", headers: jsonHeaders, b
 await owner.request("/product", { headers: { accept: "text/html" } });
 
 console.log(JSON.stringify({ account: email, workspace: workspace.id, campaign: campaign.id, link: link.id,
-  redirect: 302, clickPersisted: true, analytics: { report: "compared", inspector: "verified", source: "Instagram", device: "Mobile",
+  redirect: 302, clickPersisted: true, analytics: { report: "compared", inspector: "verified", source: "Instagram", device: "Mobile", audience: "minimized",
     sessions: 1, coverage: 66.7, gpc: "respected" },
   qr: "svg", domainDns: "checked", isolation: { workspace: 403, link: 404 }, session: "restored" }, null, 2));

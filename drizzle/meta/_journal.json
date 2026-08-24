@@ -43,6 +43,13 @@
       "when": 1787598604959,
       "tag": "0005_previous_thunderbolt_ross",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1787599612924,
+      "tag": "0006_flowery_shotgun",
+      "breakpoints": true
     }
   ]
 }

@@ -5,13 +5,16 @@ type Phase = { id: string; code: string; title: string; intent: string; mileston
 const task = (title: string, detail: string, status: Status = "queued", evidence?: string, blocker?: string): Task => ({ title, detail, status, evidence, blocker });
 
 export const project = {
-  release: "0.3.0-alpha.2", environment: "Vercel + Railway · público e operacional", commit: "main · 87cdf2e publicado",
+  release: "0.3.0-alpha.3 candidate", environment: "Vercel + Railway · alpha 2 público, alpha 3 validado localmente", commit: "m3-analytics · candidato",
   liveUrl: "https://mira-link-intelligence.vercel.app",
-  updatedIso: "2026-08-24T16:19:00-03:00", updatedLabel: "24 ago 2026 · 16:19 BRT",
+  updatedIso: "2026-08-24T16:28:49-03:00", updatedLabel: "24 ago 2026 · 16:28 BRT",
   currentFocus: "Milestone 3 · Analytics de decisão",
-  currentDetail: "Sessões observadas estão ao vivo com hash por Workspace, cobertura explícita e opt-out GPC/DNT; visitantes únicos continuam deliberadamente indisponíveis.",
+  currentDetail: "A candidata alpha 3 adiciona país/região aproximados, idioma, sistema e navegador minimizados; IP, user-agent bruto, cidade e coordenadas permanecem fora do banco.",
   currentGate: "inspeção visual + consentimento e controles do titular",
   validations: [
+    { status: "done", title: "Contexto de audiência local", detail: "Três cliques foram reconciliados com país, pt-BR, iOS e Safari sem persistir IP ou user-agent bruto.", time: "24 ago" },
+    { status: "done", title: "Regressão alpha 3 local", detail: "Build, lint, 14 testes, smoke completo no Railway e auditoria de produção com zero vulnerabilidades passaram.", time: "24 ago" },
+    { status: "active", title: "Publicação alpha 3", detail: "Candidata validada localmente; deploy Git, smoke remoto e atualização final do alias estão em execução.", time: "24 ago" },
     { status: "done", title: "M3 alpha 2 publicado", detail: "Commit 87cdf2e recebeu estado Ready no Vercel e atualizou o alias público da Mira.", time: "24 ago" },
     { status: "done", title: "Sessão privacy-safe remota", detail: "Domínio final reconciliou três cliques, uma sessão, 66,7% de cobertura e opt-out GPC/DNT.", time: "24 ago" },
     { status: "done", title: "Pipeline alpha 2 aprovado", detail: "GitHub Actions executou migration-aware build, 12 testes e smoke PostgreSQL em 1m17s.", time: "24 ago" },
@@ -110,10 +113,10 @@ export const phases: Phase[] = [
   { id: "intelligence", code: "Fase 2", title: "Inteligência de tráfego", intent: "Transformar eventos confiáveis em entendimento, comparação e ação.", milestones: [
     { id: "m3", code: "M3", release: "Release 0.3.0", title: "Analytics de decisão", outcome: "O usuário entende o que mudou, por quê e onde agir.", exitCriteria: "Métricas reconciliadas, filtros temporais, comparação e drill-down testados com volume representativo.", tasks: [
       task("Pipeline analítico", "Agregações, retenção, reprocessamento e reconciliação de contagens.", "active", "Eventos incluem sessão opcional indexada e reconciliada; materialização, reprocessamento e escala continuam abertos."),
-      task("Tráfego e audiência", "Cliques, visitantes, sessões, origem, geografia aproximada e tecnologia.", "active", "Cliques, sessões observadas, cobertura, referrer e dispositivo estão integrados; visitantes e geografia continuam indisponíveis."),
+      task("Tráfego e audiência", "Cliques, visitantes, sessões, origem, geografia aproximada e tecnologia.", "active", "Cliques, sessões observadas, cobertura, referrer, país/região aproximados, idioma, dispositivo, sistema e navegador estão integrados; visitantes continuam deliberadamente indisponíveis."),
       task("Comparações temporais", "Período anterior, tendências, deltas explicáveis e mudanças.", "active", "Janelas equivalentes de 7/30/90 dias, série, deltas e estados sem base foram executados contra PostgreSQL."),
       task("Qualidade de tráfego", "Humanos, bots conhecidos, suspeitos, repetições e confiança.", "active", "Automação conhecida e sua participação estão expostas com limitação explícita; suspeitos e anomalias ainda evoluirão."),
-      task("Link Inspector", "Performance, routing, QR, UTM, saúde e histórico organizados.", "active", "Performance, origem, dispositivo, configuração, QR e eventos recentes estão integrados; routing, health, version history e gate visual seguem abertos."),
+      task("Link Inspector", "Performance, routing, QR, UTM, saúde e histórico organizados.", "active", "Performance, origem, país, tecnologia, configuração, QR e eventos recentes estão integrados; routing, health, version history e gate visual seguem abertos."),
     ] },
     { id: "m4", code: "M4", release: "Release 0.4.0", title: "Live + conversões", outcome: "A jornada além do clique fica visível em tempo quase real.", exitCriteria: "Eventos chegam por integração real, aparecem no Live e reconciliam com atribuição e receita.", tasks: [
       task("Live Traffic", "Stream eficiente, filtros e pausa sem perder contexto operacional."),

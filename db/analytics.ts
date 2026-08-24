@@ -26,6 +26,10 @@ export type AnalyticsReport = {
   series: SeriesPoint[];
   sources: Breakdown[];
   devices: Breakdown[];
+  countries: Breakdown[];
+  languages: Breakdown[];
+  operatingSystems: Breakdown[];
+  browsers: Breakdown[];
   topLinks: Array<Comparison & { id: string; title: string; slug: string; domainHostname: string | null }>;
   campaigns: Array<Comparison & { id: string | null; name: string }>;
   insights: Insight[];
@@ -42,7 +46,10 @@ export type LinkAnalytics = {
   series: SeriesPoint[];
   sources: Breakdown[];
   devices: Breakdown[];
-  recentEvents: Array<{ id: string; occurredAt: number; referrer: string; device: string }>;
+  countries: Breakdown[];
+  operatingSystems: Breakdown[];
+  recentEvents: Array<{ id: string; occurredAt: number; referrer: string; device: string; country: string;
+    region: string | null; language: string; operatingSystem: string; browser: string }>;
 };
 
 function rangeFor(requestedDays: number, now = Date.now()) {
@@ -67,6 +74,22 @@ function sourceLabel(value: string): string {
 
 function deviceLabel(value: string): string {
   return ({ mobile: "Mobile", desktop: "Desktop", bot: "Automação conhecida", unknown: "Não identificado" } as Record<string, string>)[value] ?? value;
+}
+
+const regionNames = new Intl.DisplayNames(["pt-BR"], { type: "region" });
+
+function countryLabel(value: string): string {
+  if (value === "unknown") return "Não identificado";
+  return regionNames.of(value) ?? value;
+}
+
+function languageLabel(value: string): string {
+  if (value === "unknown") return "Não identificado";
+  try {
+    return new Intl.DisplayNames(["pt-BR"], { type: "language" }).of(value) ?? value;
+  } catch {
+    return value;
+  }
 }
 
 function hydrateBreakdown(rows: Array<{ key: string; current: number; previous: number }>, label: (key: string) => string): Breakdown[] {
@@ -95,8 +118,11 @@ async function seriesFor(workspaceId: string, range: ReturnType<typeof rangeFor>
   return series;
 }
 
-async function breakdownFor(workspaceId: string, range: ReturnType<typeof rangeFor>, column: "device_class" | "referrer_host", linkId?: string): Promise<Array<{ key: string; current: number; previous: number }>> {
-  const keySql = column === "referrer_host" ? "COALESCE(NULLIF(referrer_host, ''), 'direct')" : column;
+type BreakdownColumn = "device_class" | "referrer_host" | "country_code" | "language_code" | "os_family" | "browser_family";
+
+async function breakdownFor(workspaceId: string, range: ReturnType<typeof rangeFor>, column: BreakdownColumn, linkId?: string): Promise<Array<{ key: string; current: number; previous: number }>> {
+  const fallback = column === "referrer_host" ? "direct" : column === "country_code" || column === "language_code" ? "unknown" : "Unknown";
+  const keySql = `COALESCE(NULLIF(${column}, ''), '${fallback}')`;
   const linkClause = linkId ? "AND link_id = ?" : "";
   const bindings = linkId ? [range.startsAt, range.startsAt, workspaceId, range.previousStartsAt, range.endsAt, linkId]
     : [range.startsAt, range.startsAt, workspaceId, range.previousStartsAt, range.endsAt];
@@ -129,7 +155,7 @@ export async function workspaceAnalytics(userId: string, workspaceId: string, re
   await requireWorkspace(userId, workspaceId);
   const range = rangeFor(requestedDays);
   const d1 = database();
-  const [overview, activeLinks, linksWithTraffic, devicesRaw, sourcesRaw, series, topLinks, campaigns] = await Promise.all([
+  const [overview, activeLinks, linksWithTraffic, devicesRaw, sourcesRaw, countriesRaw, languagesRaw, operatingSystemsRaw, browsersRaw, series, topLinks, campaigns] = await Promise.all([
     d1.prepare(`SELECT SUM(CASE WHEN occurred_at >= ? THEN 1 ELSE 0 END) AS current,
       SUM(CASE WHEN occurred_at < ? THEN 1 ELSE 0 END) AS previous,
       SUM(CASE WHEN occurred_at >= ? AND device_class = 'bot' THEN 1 ELSE 0 END) AS automated,
@@ -147,6 +173,10 @@ export async function workspaceAnalytics(userId: string, workspaceId: string, re
       .bind(workspaceId, range.startsAt, range.endsAt).first<{ total: number }>(),
     breakdownFor(workspaceId, range, "device_class"),
     breakdownFor(workspaceId, range, "referrer_host"),
+    breakdownFor(workspaceId, range, "country_code"),
+    breakdownFor(workspaceId, range, "language_code"),
+    breakdownFor(workspaceId, range, "os_family"),
+    breakdownFor(workspaceId, range, "browser_family"),
     seriesFor(workspaceId, range),
     d1.prepare(`SELECT l.id, l.title, l.slug, d.hostname AS domain_hostname,
       SUM(CASE WHEN ce.occurred_at >= ? THEN 1 ELSE 0 END) AS current,
@@ -174,6 +204,10 @@ export async function workspaceAnalytics(userId: string, workspaceId: string, re
   const sessionAttributed = Number(overview?.session_attributed ?? 0);
   const sources = hydrateBreakdown(sourcesRaw, sourceLabel);
   const devices = hydrateBreakdown(devicesRaw, deviceLabel);
+  const countries = hydrateBreakdown(countriesRaw, countryLabel);
+  const languages = hydrateBreakdown(languagesRaw, languageLabel);
+  const operatingSystems = hydrateBreakdown(operatingSystemsRaw, (value) => value === "Unknown" ? "Não identificado" : value);
+  const browsers = hydrateBreakdown(browsersRaw, (value) => value === "Unknown" ? "Não identificado" : value);
   const automatedClicks = Number(overview?.automated ?? 0);
   const partial = {
     range,
@@ -182,7 +216,7 @@ export async function workspaceAnalytics(userId: string, workspaceId: string, re
       activeLinks: Number(activeLinks?.total ?? 0), linksWithTraffic: Number(linksWithTraffic?.total ?? 0),
       automatedClicks, automatedShare: clicks.current ? Math.round(automatedClicks / clicks.current * 1000) / 10 : 0,
       lastEventAt: overview?.last_event_at ? Number(overview.last_event_at) : null },
-    series, sources, devices,
+    series, sources, devices, countries, languages, operatingSystems, browsers,
     topLinks: topLinks.results.map((row) => ({ id: row.id, title: row.title, slug: row.slug, domainHostname: row.domain_hostname,
       ...comparePeriods(Number(row.current), Number(row.previous)) })),
     campaigns: campaigns.results.map((row) => ({ id: row.id, name: row.name, ...comparePeriods(Number(row.current), Number(row.previous)) })),
@@ -192,6 +226,8 @@ export async function workspaceAnalytics(userId: string, workspaceId: string, re
     "Sessões observadas usam um identificador first-party opaco por 30 minutos; GPC e DNT são respeitados e reduzem a cobertura.",
     "Sessões não equivalem a visitantes únicos e podem reiniciar por navegador, domínio, bloqueio ou expiração do cookie.",
     "Origem depende do referrer enviado pelo navegador e pode aparecer como Direto.",
+    "País e região são aproximações derivadas pela infraestrutura a partir da rede; VPNs e proxies podem alterar o resultado. Cidade e coordenadas não são coletadas.",
+    "Idioma, sistema e navegador são categorias reduzidas dos cabeçalhos do request; o valor bruto do user-agent não é armazenado.",
     "Automação conhecida usa sinais do user-agent minimizado; não equivale a detecção completa de fraude.",
   ] };
 }
@@ -200,7 +236,7 @@ export async function linkAnalytics(userId: string, linkId: string, requestedDay
   const link = await getLinkForMember(userId, linkId);
   const range = rangeFor(requestedDays);
   const d1 = database();
-  const [overview, series, sourcesRaw, devicesRaw, recent] = await Promise.all([
+  const [overview, series, sourcesRaw, devicesRaw, countriesRaw, operatingSystemsRaw, recent] = await Promise.all([
     d1.prepare(`SELECT SUM(CASE WHEN occurred_at >= ? THEN 1 ELSE 0 END) AS current,
       SUM(CASE WHEN occurred_at < ? THEN 1 ELSE 0 END) AS previous,
       COUNT(DISTINCT CASE WHEN occurred_at >= ? THEN session_id_hash END) AS current_sessions,
@@ -213,9 +249,16 @@ export async function linkAnalytics(userId: string, linkId: string, requestedDay
     seriesFor(link.workspace_id, range, link.id),
     breakdownFor(link.workspace_id, range, "referrer_host", link.id),
     breakdownFor(link.workspace_id, range, "device_class", link.id),
-    d1.prepare(`SELECT id, occurred_at, COALESCE(NULLIF(referrer_host, ''), 'direct') AS referrer, device_class
+    breakdownFor(link.workspace_id, range, "country_code", link.id),
+    breakdownFor(link.workspace_id, range, "os_family", link.id),
+    d1.prepare(`SELECT id, occurred_at, COALESCE(NULLIF(referrer_host, ''), 'direct') AS referrer, device_class,
+      COALESCE(NULLIF(country_code, ''), 'unknown') AS country_code, region_code,
+      COALESCE(NULLIF(language_code, ''), 'unknown') AS language_code,
+      COALESCE(NULLIF(os_family, ''), 'Unknown') AS os_family,
+      COALESCE(NULLIF(browser_family, ''), 'Unknown') AS browser_family
       FROM click_events WHERE workspace_id = ? AND link_id = ? ORDER BY occurred_at DESC LIMIT 25`)
-      .bind(link.workspace_id, link.id).all<{ id: string; occurred_at: number; referrer: string; device_class: string }>(),
+      .bind(link.workspace_id, link.id).all<{ id: string; occurred_at: number; referrer: string; device_class: string;
+        country_code: string; region_code: string | null; language_code: string; os_family: string; browser_family: string }>(),
   ]);
   const clicks = comparePeriods(Number(overview?.current ?? 0), Number(overview?.previous ?? 0));
   const sessions = comparePeriods(Number(overview?.current_sessions ?? 0), Number(overview?.previous_sessions ?? 0));
@@ -223,5 +266,10 @@ export async function linkAnalytics(userId: string, linkId: string, requestedDay
   return { link, range, clicks, sessions, sessionCoverage: clicks.current ? Math.round(sessionAttributed / clicks.current * 1000) / 10 : 0,
     clicksPerSession: sessions.current ? Math.round(sessionAttributed / sessions.current * 10) / 10 : 0, series,
     sources: hydrateBreakdown(sourcesRaw, sourceLabel), devices: hydrateBreakdown(devicesRaw, deviceLabel),
-    recentEvents: recent.results.map((row) => ({ id: row.id, occurredAt: Number(row.occurred_at), referrer: sourceLabel(row.referrer), device: deviceLabel(row.device_class) })) };
+    countries: hydrateBreakdown(countriesRaw, countryLabel),
+    operatingSystems: hydrateBreakdown(operatingSystemsRaw, (value) => value === "Unknown" ? "Não identificado" : value),
+    recentEvents: recent.results.map((row) => ({ id: row.id, occurredAt: Number(row.occurred_at), referrer: sourceLabel(row.referrer),
+      device: deviceLabel(row.device_class), country: countryLabel(row.country_code), region: row.region_code,
+      language: languageLabel(row.language_code), operatingSystem: row.os_family === "Unknown" ? "Não identificado" : row.os_family,
+      browser: row.browser_family === "Unknown" ? "Não identificado" : row.browser_family })) };
 }
