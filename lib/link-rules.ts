@@ -27,6 +27,19 @@ export type UtmFields = {
   term?: string | null;
 };
 
+export function normalizeUtmValue(value: string | null | undefined): string | null {
+  const normalized = value
+    ?.normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9._~-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 100);
+  return normalized || null;
+}
+
 export function applyUtmParameters(destination: string, fields: UtmFields): string {
   const validated = validateDestination(destination);
   const url = new URL(validated);
@@ -38,7 +51,7 @@ export function applyUtmParameters(destination: string, fields: UtmFields): stri
     utm_term: fields.term,
   };
   for (const [key, raw] of Object.entries(values)) {
-    const value = raw?.trim().slice(0, 100);
+    const value = normalizeUtmValue(raw);
     if (value) url.searchParams.set(key, value);
     else url.searchParams.delete(key);
   }

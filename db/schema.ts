@@ -65,7 +65,7 @@ export const links = sqliteTable("links", {
   updatedAt: integer("updated_at").notNull(),
 }, (table) => [
   uniqueIndex("idx_links_slug").on(table.slug),
-  index("idx_links_workspace_updated").on(table.workspaceId, table.updatedAt),
+  index("idx_links_workspace_updated_id").on(table.workspaceId, table.updatedAt, table.id),
   index("idx_links_workspace_status").on(table.workspaceId, table.status),
   index("idx_links_workspace_campaign").on(table.workspaceId, table.campaignId),
 ]);
@@ -86,6 +86,33 @@ export const linkTags = sqliteTable("link_tags", {
 }, (table) => [
   primaryKey({ columns: [table.linkId, table.tagId] }),
   index("idx_link_tags_tag").on(table.tagId),
+]);
+
+export const linkFavorites = sqliteTable("link_favorites", {
+  linkId: text("link_id").notNull().references(() => links.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  createdAt: integer("created_at").notNull(),
+}, (table) => [
+  primaryKey({ columns: [table.linkId, table.userId] }),
+  index("idx_link_favorites_user_created").on(table.userId, table.createdAt),
+]);
+
+export const utmPresets = sqliteTable("utm_presets", {
+  id: text("id").primaryKey(),
+  workspaceId: text("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  normalizedName: text("normalized_name").notNull(),
+  source: text("source"),
+  medium: text("medium"),
+  campaign: text("campaign"),
+  content: text("content"),
+  term: text("term"),
+  createdByUserId: text("created_by_user_id").notNull().references(() => users.id),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+}, (table) => [
+  uniqueIndex("idx_utm_presets_workspace_normalized").on(table.workspaceId, table.normalizedName),
+  index("idx_utm_presets_workspace_updated").on(table.workspaceId, table.updatedAt),
 ]);
 
 export const clickEvents = sqliteTable("click_events", {

@@ -1,6 +1,6 @@
 import { env } from "cloudflare:workers";
 import type { ChatGPTUser } from "../app/chatgpt-auth";
-import { applyUtmParameters, normalizeSlug, normalizeTag, type UtmFields } from "../lib/link-rules";
+import { applyUtmParameters, normalizeSlug, normalizeTag, normalizeUtmValue, type UtmFields } from "../lib/link-rules";
 
 export type WorkspaceRole = "owner" | "admin" | "editor" | "viewer";
 type WorkspaceRow = { id: string; name: string; slug: string; role: WorkspaceRole };
@@ -10,7 +10,7 @@ export type LinkRow = {
   campaign_id: string | null; campaign_name: string | null; channel: string | null;
   utm_source: string | null; utm_medium: string | null; utm_campaign: string | null;
   utm_content: string | null; utm_term: string | null; tags: string[]; status: LinkStatus;
-  created_at: number; updated_at: number; clicks: number;
+  created_at: number; updated_at: number; clicks: number; is_favorite: boolean;
 };
 export type CampaignStatus = "planning" | "active" | "ended";
 export type CampaignRow = {
@@ -19,6 +19,16 @@ export type CampaignRow = {
   links: number; clicks: number;
 };
 export type TagRow = { id: string; name: string; normalized_name: string; links: number };
+export type UtmPresetRow = {
+  id: string; workspace_id: string; name: string; normalized_name: string; source: string | null;
+  medium: string | null; campaign: string | null; content: string | null; term: string | null;
+  created_at: number; updated_at: number;
+};
+export type LinkPage = { links: LinkRow[]; nextCursor: string | null; total: number };
+export type CampaignDetail = CampaignRow & {
+  channels: { channel: string; links: number; clicks: number }[];
+  top_links: { id: string; title: string; slug: string; channel: string | null; status: LinkStatus; clicks: number }[];
+};
 
 function database(): D1Database {
   if (!env.DB) throw new Error("D1 binding DB is unavailable");
@@ -57,6 +67,13 @@ async function ensureSchema(): Promise<void> {
         normalized_name TEXT NOT NULL, created_at INTEGER NOT NULL)`),
       d1.prepare(`CREATE TABLE IF NOT EXISTS link_tags (link_id TEXT NOT NULL REFERENCES links(id) ON DELETE CASCADE,
         tag_id TEXT NOT NULL REFERENCES tags(id) ON DELETE CASCADE, PRIMARY KEY (link_id, tag_id))`),
+      d1.prepare(`CREATE TABLE IF NOT EXISTS link_favorites (link_id TEXT NOT NULL REFERENCES links(id) ON DELETE CASCADE,
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, created_at INTEGER NOT NULL,
+        PRIMARY KEY (link_id, user_id))`),
+      d1.prepare(`CREATE TABLE IF NOT EXISTS utm_presets (id TEXT PRIMARY KEY NOT NULL,
+        workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE, name TEXT NOT NULL,
+        normalized_name TEXT NOT NULL, source TEXT, medium TEXT, campaign TEXT, content TEXT, term TEXT,
+        created_by_user_id TEXT NOT NULL REFERENCES users(id), created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)`),
     ]);
     const columns = await d1.prepare("PRAGMA table_info(links)").all<{ name: string }>();
     const names = new Set(columns.results.map((column) => column.name));
@@ -74,11 +91,15 @@ async function ensureSchema(): Promise<void> {
       d1.prepare("CREATE INDEX IF NOT EXISTS idx_campaigns_workspace_updated ON campaigns(workspace_id, updated_at)"),
       d1.prepare("CREATE INDEX IF NOT EXISTS idx_campaigns_workspace_status ON campaigns(workspace_id, status)"),
       d1.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_links_slug ON links(slug)"),
-      d1.prepare("CREATE INDEX IF NOT EXISTS idx_links_workspace_updated ON links(workspace_id, updated_at)"),
+      d1.prepare("DROP INDEX IF EXISTS idx_links_workspace_updated"),
+      d1.prepare("CREATE INDEX IF NOT EXISTS idx_links_workspace_updated_id ON links(workspace_id, updated_at, id)"),
       d1.prepare("CREATE INDEX IF NOT EXISTS idx_links_workspace_status ON links(workspace_id, status)"),
       d1.prepare("CREATE INDEX IF NOT EXISTS idx_links_workspace_campaign ON links(workspace_id, campaign_id)"),
       d1.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_tags_workspace_normalized ON tags(workspace_id, normalized_name)"),
       d1.prepare("CREATE INDEX IF NOT EXISTS idx_link_tags_tag ON link_tags(tag_id)"),
+      d1.prepare("CREATE INDEX IF NOT EXISTS idx_link_favorites_user_created ON link_favorites(user_id, created_at)"),
+      d1.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_utm_presets_workspace_normalized ON utm_presets(workspace_id, normalized_name)"),
+      d1.prepare("CREATE INDEX IF NOT EXISTS idx_utm_presets_workspace_updated ON utm_presets(workspace_id, updated_at)"),
       d1.prepare("CREATE INDEX IF NOT EXISTS idx_click_events_workspace_time ON click_events(workspace_id, occurred_at)"),
       d1.prepare("CREATE INDEX IF NOT EXISTS idx_click_events_link_time ON click_events(link_id, occurred_at)"),
       d1.prepare("PRAGMA optimize"),
@@ -149,35 +170,68 @@ function cleanNullable(value: string | null | undefined, limit = 100): string | 
   return cleaned || null;
 }
 
-type LinkSqlRow = Omit<LinkRow, "tags" | "clicks"> & { tag_names: string | null; clicks: number };
+type LinkSqlRow = Omit<LinkRow, "tags" | "clicks" | "is_favorite"> & { tag_names: string | null; clicks: number; is_favorite: number };
 function hydrateLink(row: LinkSqlRow): LinkRow {
-  const { tag_names, ...link } = row;
-  return { ...link, clicks: Number(link.clicks), tags: tag_names ? tag_names.split("\u001f") : [] };
+  const { tag_names, is_favorite, ...link } = row;
+  return { ...link, clicks: Number(link.clicks), is_favorite: Boolean(is_favorite), tags: tag_names ? tag_names.split("\u001f") : [] };
 }
 
 const linkSelect = `SELECT l.id, l.workspace_id, l.title, l.destination_url, l.slug,
   l.campaign_id, c.name AS campaign_name, l.channel, l.utm_source, l.utm_medium,
   l.utm_campaign, l.utm_content, l.utm_term, l.status, l.created_at, l.updated_at,
   (SELECT COUNT(*) FROM click_events ce WHERE ce.link_id = l.id) AS clicks,
+  EXISTS(SELECT 1 FROM link_favorites lf WHERE lf.link_id = l.id AND lf.user_id = ?) AS is_favorite,
   (SELECT GROUP_CONCAT(t.name, char(31)) FROM link_tags lt JOIN tags t ON t.id = lt.tag_id WHERE lt.link_id = l.id) AS tag_names
   FROM links l LEFT JOIN campaigns c ON c.id = l.campaign_id`;
 
+function encodeLinkCursor(updatedAt: number, id: string): string {
+  return btoa(`${updatedAt}:${id}`).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+function decodeLinkCursor(value: string | undefined): { updatedAt: number; id: string } {
+  if (!value) return { updatedAt: 0, id: "" };
+  try {
+    const decoded = atob(value.replace(/-/g, "+").replace(/_/g, "/"));
+    const separator = decoded.indexOf(":");
+    const updatedAt = Number(decoded.slice(0, separator));
+    const id = decoded.slice(separator + 1);
+    if (!Number.isSafeInteger(updatedAt) || updatedAt <= 0 || !/^[0-9a-f-]{36}$/i.test(id)) throw new Error();
+    return { updatedAt, id };
+  } catch {
+    throw new Error("CURSOR_INVALID");
+  }
+}
+
 export async function listLinks(userId: string, workspaceId: string, options: {
   query?: string; status?: "all" | "active" | "archived"; campaignId?: string; tag?: string;
-} = {}): Promise<LinkRow[]> {
+  favorites?: boolean; cursor?: string; limit?: number;
+} = {}): Promise<LinkPage> {
   await requireWorkspace(userId, workspaceId);
   const query = options.query?.trim().toLocaleLowerCase("pt-BR").slice(0, 100) ?? "";
   const pattern = `%${escapeLike(query)}%`;
   const status = options.status ?? "all";
   const campaignId = options.campaignId?.trim() ?? "";
   const tag = normalizeTag(options.tag ?? "")?.normalizedName ?? "";
-  const result = await database().prepare(`${linkSelect}
-    WHERE l.workspace_id = ? AND (? = '' OR LOWER(l.title) LIKE ? ESCAPE '\\' OR LOWER(l.slug) LIKE ? ESCAPE '\\' OR LOWER(l.destination_url) LIKE ? ESCAPE '\\')
+  const favorites = options.favorites ? 1 : 0;
+  const cursor = decodeLinkCursor(options.cursor);
+  const requestedLimit = Number.isFinite(options.limit) ? Math.trunc(options.limit!) : 25;
+  const limit = Math.min(50, Math.max(10, requestedLimit));
+  const filterSql = `l.workspace_id = ? AND (? = '' OR LOWER(l.title) LIKE ? ESCAPE '\\' OR LOWER(l.slug) LIKE ? ESCAPE '\\' OR LOWER(l.destination_url) LIKE ? ESCAPE '\\')
       AND (? = 'all' OR l.status = ?) AND (? = '' OR l.campaign_id = ?)
       AND (? = '' OR EXISTS (SELECT 1 FROM link_tags flt JOIN tags ft ON ft.id = flt.tag_id WHERE flt.link_id = l.id AND ft.normalized_name = ?))
-    ORDER BY l.updated_at DESC LIMIT 100`)
-    .bind(workspaceId, query, pattern, pattern, pattern, status, status, campaignId, campaignId, tag, tag).all<LinkSqlRow>();
-  return result.results.map(hydrateLink);
+      AND (? = 0 OR EXISTS (SELECT 1 FROM link_favorites ff WHERE ff.link_id = l.id AND ff.user_id = ?))`;
+  const filterBindings = [workspaceId, query, pattern, pattern, pattern, status, status, campaignId, campaignId, tag, tag, favorites, userId] as const;
+  const result = await database().prepare(`${linkSelect}
+    WHERE ${filterSql} AND (? = 0 OR l.updated_at < ? OR (l.updated_at = ? AND l.id < ?))
+    ORDER BY l.updated_at DESC, l.id DESC LIMIT ?`)
+    .bind(userId, ...filterBindings, cursor.updatedAt, cursor.updatedAt, cursor.updatedAt, cursor.id, limit + 1).all<LinkSqlRow>();
+  const totalRow = await database().prepare(`SELECT COUNT(*) AS total FROM links l WHERE ${filterSql}`)
+    .bind(...filterBindings).first<{ total: number }>();
+  const hasMore = result.results.length > limit;
+  const rows = result.results.slice(0, limit);
+  const last = rows.at(-1);
+  return { links: rows.map(hydrateLink), total: Number(totalRow?.total ?? 0),
+    nextCursor: hasMore && last ? encodeLinkCursor(last.updated_at, last.id) : null };
 }
 
 async function assertCampaign(workspaceId: string, campaignId: string | null): Promise<void> {
@@ -223,8 +277,8 @@ export async function createLink(input: {
       utm_source, utm_medium, utm_campaign, utm_content, utm_term, status, created_by_user_id, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?)`)
       .bind(id, input.workspaceId, title, destinationUrl, slug, campaignId, channel,
-        cleanNullable(utm.source), cleanNullable(utm.medium), cleanNullable(utm.campaign), cleanNullable(utm.content),
-        cleanNullable(utm.term), input.userId, now, now).run();
+        normalizeUtmValue(utm.source), normalizeUtmValue(utm.medium), normalizeUtmValue(utm.campaign), normalizeUtmValue(utm.content),
+        normalizeUtmValue(utm.term), input.userId, now, now).run();
     await syncLinkTags(input.workspaceId, id, input.tags ?? []);
   } catch (error) {
     if (String(error).toLowerCase().includes("unique")) throw new Error("Este slug já está em uso.");
@@ -237,7 +291,7 @@ async function linkForMember(userId: string, linkId: string): Promise<{ link: Li
   await ensureSchema();
   const row = await database().prepare(`${linkSelect}
     WHERE l.id = ? AND EXISTS (SELECT 1 FROM workspace_members wm WHERE wm.workspace_id = l.workspace_id AND wm.user_id = ?) LIMIT 1`)
-    .bind(linkId, userId).first<LinkSqlRow>();
+    .bind(userId, linkId, userId).first<LinkSqlRow>();
   if (!row) throw new Error("LINK_NOT_FOUND");
   const role = await database().prepare("SELECT role FROM workspace_members WHERE workspace_id = ? AND user_id = ?")
     .bind(row.workspace_id, userId).first<{ role: WorkspaceRole }>();
@@ -272,8 +326,8 @@ export async function updateLink(input: {
     const result = await database().prepare(`UPDATE links SET title = ?, destination_url = ?, slug = ?, campaign_id = ?, channel = ?,
       utm_source = ?, utm_medium = ?, utm_campaign = ?, utm_content = ?, utm_term = ?, status = ?, updated_at = ?
       WHERE id = ? AND workspace_id = ? AND updated_at = ?`)
-      .bind(title, destinationUrl, slug, campaignId, channel, cleanNullable(utm.source), cleanNullable(utm.medium),
-        cleanNullable(utm.campaign), cleanNullable(utm.content), cleanNullable(utm.term), status, now,
+      .bind(title, destinationUrl, slug, campaignId, channel, normalizeUtmValue(utm.source), normalizeUtmValue(utm.medium),
+        normalizeUtmValue(utm.campaign), normalizeUtmValue(utm.content), normalizeUtmValue(utm.term), status, now,
         existing.id, existing.workspace_id, input.expectedUpdatedAt).run();
     if (!result.meta.changes) throw new Error("LINK_CONFLICT");
     if (input.tags !== undefined) await syncLinkTags(existing.workspace_id, existing.id, input.tags);
@@ -282,6 +336,17 @@ export async function updateLink(input: {
     throw error;
   }
   return (await linkForMember(input.userId, input.linkId)).link;
+}
+
+export async function setLinkFavorite(userId: string, linkId: string, favorite: boolean): Promise<LinkRow> {
+  await linkForMember(userId, linkId);
+  if (favorite) {
+    await database().prepare("INSERT OR IGNORE INTO link_favorites (link_id, user_id, created_at) VALUES (?, ?, ?)")
+      .bind(linkId, userId, Date.now()).run();
+  } else {
+    await database().prepare("DELETE FROM link_favorites WHERE link_id = ? AND user_id = ?").bind(linkId, userId).run();
+  }
+  return (await linkForMember(userId, linkId)).link;
 }
 
 export async function listCampaigns(userId: string, workspaceId: string): Promise<CampaignRow[]> {
@@ -331,6 +396,74 @@ export async function updateCampaign(input: {
       now, input.campaignId, input.expectedUpdatedAt).run();
   if (!result.meta.changes) throw new Error("CAMPAIGN_CONFLICT");
   return (await listCampaigns(input.userId, existing.workspace_id)).find((campaign) => campaign.id === input.campaignId)!;
+}
+
+export async function getCampaignDetail(userId: string, campaignId: string): Promise<CampaignDetail> {
+  await ensureSchema();
+  const membership = await database().prepare(`SELECT c.workspace_id FROM campaigns c JOIN workspace_members wm
+    ON wm.workspace_id = c.workspace_id WHERE c.id = ? AND wm.user_id = ? LIMIT 1`)
+    .bind(campaignId, userId).first<{ workspace_id: string }>();
+  if (!membership) throw new Error("CAMPAIGN_NOT_FOUND");
+  const campaign = (await listCampaigns(userId, membership.workspace_id)).find((item) => item.id === campaignId);
+  if (!campaign) throw new Error("CAMPAIGN_NOT_FOUND");
+  const [channels, topLinks] = await Promise.all([
+    database().prepare(`SELECT COALESCE(NULLIF(l.channel, ''), 'Sem canal') AS channel,
+      COUNT(DISTINCT l.id) AS links, COUNT(ce.id) AS clicks FROM links l
+      LEFT JOIN click_events ce ON ce.link_id = l.id WHERE l.campaign_id = ?
+      GROUP BY COALESCE(NULLIF(l.channel, ''), 'Sem canal') ORDER BY clicks DESC, links DESC, channel ASC`)
+      .bind(campaignId).all<{ channel: string; links: number; clicks: number }>(),
+    database().prepare(`SELECT l.id, l.title, l.slug, l.channel, l.status, COUNT(ce.id) AS clicks
+      FROM links l LEFT JOIN click_events ce ON ce.link_id = l.id WHERE l.campaign_id = ?
+      GROUP BY l.id ORDER BY clicks DESC, l.updated_at DESC LIMIT 50`)
+      .bind(campaignId).all<{ id: string; title: string; slug: string; channel: string | null; status: LinkStatus; clicks: number }>(),
+  ]);
+  return { ...campaign,
+    channels: channels.results.map((row) => ({ ...row, links: Number(row.links), clicks: Number(row.clicks) })),
+    top_links: topLinks.results.map((row) => ({ ...row, clicks: Number(row.clicks) })) };
+}
+
+export async function listUtmPresets(userId: string, workspaceId: string): Promise<UtmPresetRow[]> {
+  await requireWorkspace(userId, workspaceId);
+  const result = await database().prepare(`SELECT id, workspace_id, name, normalized_name, source, medium,
+    campaign, content, term, created_at, updated_at FROM utm_presets WHERE workspace_id = ? ORDER BY updated_at DESC, id DESC`)
+    .bind(workspaceId).all<UtmPresetRow>();
+  return result.results;
+}
+
+export async function createUtmPreset(input: {
+  userId: string; workspaceId: string; name: string; utm: UtmFields;
+}): Promise<UtmPresetRow> {
+  await requireWrite(input.userId, input.workspaceId);
+  const name = input.name.trim().replace(/\s+/g, " ").slice(0, 80);
+  const normalizedName = normalizeTag(name)?.normalizedName;
+  if (!name || !normalizedName) throw new Error("Dê um nome ao padrão UTM.");
+  const id = crypto.randomUUID();
+  const now = Date.now();
+  const values = { source: normalizeUtmValue(input.utm.source), medium: normalizeUtmValue(input.utm.medium),
+    campaign: normalizeUtmValue(input.utm.campaign), content: normalizeUtmValue(input.utm.content), term: normalizeUtmValue(input.utm.term) };
+  if (!values.source && !values.medium && !values.campaign && !values.content && !values.term) {
+    throw new Error("Preencha ao menos um parâmetro UTM.");
+  }
+  try {
+    await database().prepare(`INSERT INTO utm_presets (id, workspace_id, name, normalized_name, source, medium,
+      campaign, content, term, created_by_user_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+      .bind(id, input.workspaceId, name, normalizedName, values.source, values.medium, values.campaign,
+        values.content, values.term, input.userId, now, now).run();
+  } catch (error) {
+    if (String(error).toLowerCase().includes("unique")) throw new Error("Já existe um padrão UTM com este nome.");
+    throw error;
+  }
+  return { id, workspace_id: input.workspaceId, name, normalized_name: normalizedName, ...values, created_at: now, updated_at: now };
+}
+
+export async function deleteUtmPreset(userId: string, presetId: string): Promise<void> {
+  await ensureSchema();
+  const row = await database().prepare(`SELECT p.workspace_id, wm.role FROM utm_presets p JOIN workspace_members wm
+    ON wm.workspace_id = p.workspace_id WHERE p.id = ? AND wm.user_id = ? LIMIT 1`)
+    .bind(presetId, userId).first<{ workspace_id: string; role: WorkspaceRole }>();
+  if (!row) throw new Error("UTM_PRESET_NOT_FOUND");
+  if (!canWrite(row.role)) throw new Error("WORKSPACE_READ_ONLY");
+  await database().prepare("DELETE FROM utm_presets WHERE id = ? AND workspace_id = ?").bind(presetId, row.workspace_id).run();
 }
 
 export async function listTags(userId: string, workspaceId: string): Promise<TagRow[]> {

@@ -24,8 +24,12 @@ type LinkItem = {
   utm_content: string | null;
   utm_term: string | null;
   tags: string[];
+  is_favorite: boolean;
 };
 type Campaign = { id: string; name: string; status: "planning" | "active" | "ended"; links: number; clicks: number };
+type Tag = { id: string; name: string; normalized_name: string; links: number };
+type UtmPreset = { id: string; name: string; source: string | null; medium: string | null; campaign: string | null; content: string | null; term: string | null };
+type UtmDraft = { source: string; medium: string; campaign: string; content: string; term: string };
 type Summary = { activeLinks: number; clicks7d: number; devices: { name: string; value: number }[] };
 type Notice = { tone: "success" | "error" | "info"; text: string } | null;
 
@@ -44,6 +48,10 @@ export default function ProductApp({ user }: { user: { displayName: string; emai
   const [links, setLinks] = useState<LinkItem[]>([]);
   const [summary, setSummary] = useState<Summary>({ activeLinks: 0, clicks7d: 0, devices: [] });
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [tags, setTags] = useState<Tag[]>([]);
+  const [presets, setPresets] = useState<UtmPreset[]>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [totalLinks, setTotalLinks] = useState(0);
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [collectionState, setCollectionState] = useState<"loading" | "ready" | "error">("loading");
   const [notice, setNotice] = useState<Notice>(null);
@@ -54,6 +62,13 @@ export default function ProductApp({ user }: { user: { displayName: string; emai
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "archived">("all");
   const [campaignFilter, setCampaignFilter] = useState("");
+  const [tagFilter, setTagFilter] = useState("");
+  const [favoritesFilter, setFavoritesFilter] = useState(false);
+  const [utmDraft, setUtmDraft] = useState<UtmDraft>({ source: "", medium: "", campaign: "", content: "", term: "" });
+  const [presetName, setPresetName] = useState("");
+  const [presetSelection, setPresetSelection] = useState("");
+  const [presetBusy, setPresetBusy] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const editTitleRef = useRef<HTMLInputElement>(null);
 
   const fetchWorkspaceData = useCallback(async (
@@ -61,22 +76,36 @@ export default function ProductApp({ user }: { user: { displayName: string; emai
     query: string,
     status: "all" | "active" | "archived",
     campaignId = "",
+    tag = "",
+    favorites = false,
+    cursor = "",
+    append = false,
   ) => {
-    setCollectionState("loading");
-    const params = new URLSearchParams({ workspaceId, query, status, campaignId });
+    if (!append) setCollectionState("loading");
+    else setLoadingMore(true);
+    const params = new URLSearchParams({ workspaceId, query, status, campaignId, tag, favorites: favorites ? "1" : "0", limit: "25" });
+    if (cursor) params.set("cursor", cursor);
     try {
-      const [linkData, summaryData, campaignData] = await Promise.all([
-        jsonRequest<{ links: LinkItem[] }>(`/api/links?${params.toString()}`),
+      const [linkData, summaryData, campaignData, tagData, presetData] = await Promise.all([
+        jsonRequest<{ links: LinkItem[]; nextCursor: string | null; total: number }>(`/api/links?${params.toString()}`),
         jsonRequest<{ summary: Summary }>(`/api/analytics/summary?workspaceId=${encodeURIComponent(workspaceId)}`),
         jsonRequest<{ campaigns: Campaign[] }>(`/api/campaigns?workspaceId=${encodeURIComponent(workspaceId)}`),
+        jsonRequest<{ tags: Tag[] }>(`/api/tags?workspaceId=${encodeURIComponent(workspaceId)}`),
+        jsonRequest<{ presets: UtmPreset[] }>(`/api/utm-presets?workspaceId=${encodeURIComponent(workspaceId)}`),
       ]);
-      setLinks(linkData.links);
+      setLinks((current) => append ? [...current, ...linkData.links.filter((link) => !current.some((item) => item.id === link.id))] : linkData.links);
+      setNextCursor(linkData.nextCursor);
+      setTotalLinks(linkData.total);
       setSummary(summaryData.summary);
       setCampaigns(campaignData.campaigns);
+      setTags(tagData.tags);
+      setPresets(presetData.presets);
       setCollectionState("ready");
     } catch (error) {
       setCollectionState("error");
       setNotice({ tone: "error", text: error instanceof Error ? error.message : "Falha ao carregar os Links." });
+    } finally {
+      if (append) setLoadingMore(false);
     }
   }, []);
 
@@ -86,7 +115,7 @@ export default function ProductApp({ user }: { user: { displayName: string; emai
     try {
       const boot = await jsonRequest<{ selected: Workspace }>("/api/bootstrap", { method: "POST", body: "{}" });
       setWorkspace(boot.selected);
-      await fetchWorkspaceData(boot.selected.id, "", "all", "");
+      await fetchWorkspaceData(boot.selected.id, "", "all", "", "", false);
       setState("ready");
     } catch (error) {
       setNotice({ tone: "error", text: error instanceof Error ? error.message : "Falha inesperada." });
@@ -102,11 +131,11 @@ export default function ProductApp({ user }: { user: { displayName: string; emai
   useEffect(() => {
     if (!workspace || state !== "ready") return;
     const searchTimer = window.setTimeout(
-      () => void fetchWorkspaceData(workspace.id, search, statusFilter, campaignFilter),
+      () => void fetchWorkspaceData(workspace.id, search, statusFilter, campaignFilter, tagFilter, favoritesFilter),
       240,
     );
     return () => window.clearTimeout(searchTimer);
-  }, [campaignFilter, fetchWorkspaceData, search, state, statusFilter, workspace]);
+  }, [campaignFilter, favoritesFilter, fetchWorkspaceData, search, state, statusFilter, tagFilter, workspace]);
 
   useEffect(() => {
     if (editing) editTitleRef.current?.focus();
@@ -134,17 +163,19 @@ export default function ProductApp({ user }: { user: { displayName: string; emai
           campaignId: form.get("campaignId") || null,
           channel: form.get("channel") || null,
           tags: String(form.get("tags") ?? "").split(",").map((tag) => tag.trim()).filter(Boolean),
-          utm: {
-            source: form.get("utmSource"), medium: form.get("utmMedium"), campaign: form.get("utmCampaign"),
-            content: form.get("utmContent"), term: form.get("utmTerm"),
-          },
+          utm: utmDraft,
         }),
       });
       setSearch("");
       setStatusFilter("active");
+      setCampaignFilter("");
+      setTagFilter("");
+      setFavoritesFilter(false);
       setLinks((current) => [data.link, ...current.filter((item) => item.id !== data.link.id)]);
+      setTotalLinks((total) => total + 1);
       setSummary((current) => ({ ...current, activeLinks: current.activeLinks + 1 }));
       formElement.reset();
+      setUtmDraft({ source: "", medium: "", campaign: "", content: "", term: "" });
       showNotice("success", "Link criado e pronto para receber tráfego.");
     } catch (error) {
       showNotice("error", error instanceof Error ? error.message : "Não foi possível criar o link.");
@@ -173,7 +204,7 @@ export default function ProductApp({ user }: { user: { displayName: string; emai
       }
       setEditing(null);
       showNotice("success", data.link.status === "archived" ? "Link arquivado. O endereço deixou de redirecionar." : "Alterações publicadas imediatamente.");
-      if (workspace) await fetchWorkspaceData(workspace.id, search, statusFilter, campaignFilter);
+      if (workspace) await fetchWorkspaceData(workspace.id, search, statusFilter, campaignFilter, tagFilter, favoritesFilter);
     } catch (error) {
       showNotice("error", error instanceof Error ? error.message : "Não foi possível atualizar o link.");
     } finally {
@@ -210,8 +241,67 @@ export default function ProductApp({ user }: { user: { displayName: string; emai
     }
   }
 
+  async function toggleFavorite(item: LinkItem) {
+    setMutating(item.id);
+    try {
+      const data = await jsonRequest<{ link: LinkItem }>(`/api/links/${encodeURIComponent(item.id)}/favorite`, {
+        method: "PUT", body: JSON.stringify({ favorite: !item.is_favorite }),
+      });
+      setLinks((current) => favoritesFilter && !data.link.is_favorite
+        ? current.filter((candidate) => candidate.id !== item.id)
+        : current.map((candidate) => candidate.id === item.id ? data.link : candidate));
+      if (favoritesFilter && !data.link.is_favorite) setTotalLinks((total) => Math.max(0, total - 1));
+      showNotice("success", data.link.is_favorite ? "Link adicionado aos seus favoritos." : "Link removido dos seus favoritos.");
+    } catch (error) {
+      showNotice("error", error instanceof Error ? error.message : "Não foi possível atualizar o favorito.");
+    } finally { setMutating(null); }
+  }
+
+  function applyPreset(presetId: string) {
+    setPresetSelection(presetId);
+    const preset = presets.find((item) => item.id === presetId);
+    if (!preset) return;
+    setUtmDraft({ source: preset.source ?? "", medium: preset.medium ?? "", campaign: preset.campaign ?? "",
+      content: preset.content ?? "", term: preset.term ?? "" });
+    showNotice("info", `Padrão “${preset.name}” aplicado ao próximo Link.`);
+  }
+
+  async function savePreset() {
+    if (!workspace) return;
+    setPresetBusy(true);
+    try {
+      const data = await jsonRequest<{ preset: UtmPreset }>("/api/utm-presets", { method: "POST",
+        body: JSON.stringify({ workspaceId: workspace.id, name: presetName, utm: utmDraft }) });
+      setPresets((current) => [data.preset, ...current]);
+      setPresetSelection(data.preset.id);
+      setPresetName("");
+      showNotice("success", "Padrão UTM salvo para todo o Workspace.");
+    } catch (error) {
+      showNotice("error", error instanceof Error ? error.message : "Não foi possível salvar o padrão UTM.");
+    } finally { setPresetBusy(false); }
+  }
+
+  async function removePreset() {
+    if (!presetSelection) return;
+    setPresetBusy(true);
+    try {
+      const response = await fetch(`/api/utm-presets/${encodeURIComponent(presetSelection)}`, {
+        method: "DELETE", headers: { "content-type": "application/json" }, body: "{}",
+      });
+      if (!response.ok) {
+        const payload = await response.json() as { error?: string };
+        throw new Error(payload.error || "Não foi possível remover o padrão UTM.");
+      }
+      setPresets((current) => current.filter((preset) => preset.id !== presetSelection));
+      setPresetSelection("");
+      showNotice("success", "Padrão UTM removido. Links existentes não foram alterados.");
+    } catch (error) {
+      showNotice("error", error instanceof Error ? error.message : "Não foi possível remover o padrão UTM.");
+    } finally { setPresetBusy(false); }
+  }
+
   const deviceLeader = useMemo(() => summary.devices[0], [summary.devices]);
-  const resultLabel = collectionState === "loading" ? "Atualizando…" : `${links.length} ${links.length === 1 ? "item" : "itens"}`;
+  const resultLabel = collectionState === "loading" ? "Atualizando…" : `${totalLinks} ${totalLinks === 1 ? "item" : "itens"}`;
 
   return (
     <div className="product-shell">
@@ -262,11 +352,13 @@ export default function ProductApp({ user }: { user: { displayName: string; emai
                 <label><span>Campanha</span><select name="campaignId" defaultValue=""><option value="">Sem campanha</option>{campaigns.filter((campaign) => campaign.status !== "ended").map((campaign) => <option key={campaign.id} value={campaign.id}>{campaign.name}</option>)}</select></label>
                 <label><span>Canal</span><input name="channel" maxLength={50} placeholder="Instagram Stories" /></label>
                 <label><span>Tags</span><input name="tags" placeholder="lançamento, social" /></label>
-                <label><span>UTM source</span><input name="utmSource" placeholder="instagram" /></label>
-                <label><span>UTM medium</span><input name="utmMedium" placeholder="social" /></label>
-                <label><span>UTM campaign</span><input name="utmCampaign" placeholder="lancamento-agosto" /></label>
-                <label><span>UTM content</span><input name="utmContent" placeholder="story-a" /></label>
-                <label><span>UTM term</span><input name="utmTerm" placeholder="opcional" /></label>
+                <div className="utm-preset-bar"><label><span>Aplicar padrão UTM</span><select value={presetSelection} onChange={(event) => applyPreset(event.target.value)}><option value="">Selecione um padrão</option>{presets.map((preset) => <option key={preset.id} value={preset.id}>{preset.name}</option>)}</select></label><label><span>Salvar configuração como</span><input value={presetName} onChange={(event) => setPresetName(event.target.value)} maxLength={80} placeholder="Social orgânico" /></label><div className="utm-preset-actions"><button type="button" className="button quiet" disabled={presetBusy || !presetName.trim()} onClick={() => void savePreset()}>{presetBusy ? "Salvando…" : "Salvar padrão"}</button><button type="button" className="button quiet danger" disabled={presetBusy || !presetSelection} onClick={() => void removePreset()}>Remover</button></div></div>
+                <label><span>UTM source</span><input name="utmSource" value={utmDraft.source} onChange={(event) => setUtmDraft((draft) => ({ ...draft, source: event.target.value }))} placeholder="instagram" /></label>
+                <label><span>UTM medium</span><input name="utmMedium" value={utmDraft.medium} onChange={(event) => setUtmDraft((draft) => ({ ...draft, medium: event.target.value }))} placeholder="social" /></label>
+                <label><span>UTM campaign</span><input name="utmCampaign" value={utmDraft.campaign} onChange={(event) => setUtmDraft((draft) => ({ ...draft, campaign: event.target.value }))} placeholder="lancamento-agosto" /></label>
+                <label><span>UTM content</span><input name="utmContent" value={utmDraft.content} onChange={(event) => setUtmDraft((draft) => ({ ...draft, content: event.target.value }))} placeholder="story-a" /></label>
+                <label><span>UTM term</span><input name="utmTerm" value={utmDraft.term} onChange={(event) => setUtmDraft((draft) => ({ ...draft, term: event.target.value }))} placeholder="opcional" /></label>
+                <p className="utm-convention">A Mira padroniza UTMs em minúsculas, sem acentos e com hífens para evitar campanhas duplicadas por grafia.</p>
               </div></details>
             </form>
           </section>
@@ -277,23 +369,27 @@ export default function ProductApp({ user }: { user: { displayName: string; emai
               <label><span className="sr-only">Buscar links</span><input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por nome, slug ou destino" /></label>
               <div role="group" aria-label="Filtrar links por status">
                 {(["all", "active", "archived"] as const).map((status) => <button key={status} type="button" className={statusFilter === status ? "selected" : ""} onClick={() => setStatusFilter(status)}>{status === "all" ? "Todos" : status === "active" ? "Ativos" : "Arquivados"}</button>)}
+                <button type="button" className={favoritesFilter ? "selected" : ""} aria-pressed={favoritesFilter} onClick={() => setFavoritesFilter((value) => !value)}>★ Favoritos</button>
               </div>
               <label className="campaign-filter"><span className="sr-only">Filtrar por campanha</span><select value={campaignFilter} onChange={(event) => setCampaignFilter(event.target.value)}><option value="">Todas as campanhas</option>{campaigns.map((campaign) => <option key={campaign.id} value={campaign.id}>{campaign.name}</option>)}</select></label>
+              <label className="campaign-filter"><span className="sr-only">Filtrar por tag</span><select value={tagFilter} onChange={(event) => setTagFilter(event.target.value)}><option value="">Todas as tags</option>{tags.map((tag) => <option key={tag.id} value={tag.normalized_name}>{tag.name} · {tag.links}</option>)}</select></label>
             </div>
 
-            {collectionState === "error" ? <div className="links-empty error"><span>!</span><h3>Não foi possível atualizar a biblioteca.</h3><button className="button quiet" type="button" onClick={() => void fetchWorkspaceData(workspace.id, search, statusFilter, campaignFilter)}>Tentar novamente</button></div> : links.length === 0 ? <div className="links-empty"><span>{search || statusFilter !== "all" || campaignFilter ? "⌕" : "↗"}</span><h3>{search || statusFilter !== "all" || campaignFilter ? "Nenhum link corresponde aos filtros." : "Seu primeiro link começa aqui."}</h3><p>{search || statusFilter !== "all" || campaignFilter ? "Ajuste a busca ou os filtros." : "Preencha o formulário acima. Nenhum dado de demonstração está ocupando este espaço."}</p></div> : <div className={`links-table ${collectionState === "loading" ? "is-loading" : ""}`} role="table" aria-label="Links do Workspace" aria-busy={collectionState === "loading"}>
+            {collectionState === "error" ? <div className="links-empty error"><span>!</span><h3>Não foi possível atualizar a biblioteca.</h3><button className="button quiet" type="button" onClick={() => void fetchWorkspaceData(workspace.id, search, statusFilter, campaignFilter, tagFilter, favoritesFilter)}>Tentar novamente</button></div> : links.length === 0 ? <div className="links-empty"><span>{search || statusFilter !== "all" || campaignFilter || tagFilter || favoritesFilter ? "⌕" : "↗"}</span><h3>{search || statusFilter !== "all" || campaignFilter || tagFilter || favoritesFilter ? "Nenhum link corresponde aos filtros." : "Seu primeiro link começa aqui."}</h3><p>{search || statusFilter !== "all" || campaignFilter || tagFilter || favoritesFilter ? "Ajuste a busca ou os filtros." : "Preencha o formulário acima. Nenhum dado de demonstração está ocupando este espaço."}</p></div> : <div className={`links-table ${collectionState === "loading" ? "is-loading" : ""}`} role="table" aria-label="Links do Workspace" aria-busy={collectionState === "loading"}>
               <div className="links-table-head" role="row"><span>Link</span><span>Destino</span><span>Cliques</span><span>Ações</span></div>
               {links.map((item) => <div className="link-row" key={item.id} role="row">
                 <div><span className={`link-status ${item.status}`} aria-label={item.status === "active" ? "Ativo" : item.status === "archived" ? "Arquivado" : "Bloqueado"} /><strong>{item.title}</strong><small>/go/{item.slug} · {[item.campaign_name, item.channel, ...item.tags].filter(Boolean).join(" · ") || (item.status === "active" ? "ativo" : item.status === "archived" ? "arquivado" : "bloqueado")}</small></div>
                 <a href={item.destination_url} target="_blank" rel="noreferrer" title={item.destination_url}>{new URL(item.destination_url).hostname}</a>
                 <strong>{item.clicks.toLocaleString("pt-BR")}</strong>
                 <div className="link-actions">
+                  <button type="button" className={item.is_favorite ? "favorite active" : "favorite"} aria-pressed={item.is_favorite} onClick={() => void toggleFavorite(item)} disabled={mutating === item.id}>{item.is_favorite ? "★ Salvo" : "☆ Favoritar"}</button>
                   <button type="button" onClick={() => void copyLink(item)}>{copied === item.id ? "Copiado" : "Copiar"}</button>
                   <button type="button" onClick={() => setEditing(item)} disabled={mutating === item.id}>Editar</button>
                   <a href={`/api/links/${encodeURIComponent(item.id)}/qr?download=1`}>QR</a>
                   <button type="button" className={item.status === "active" ? "danger" : ""} onClick={() => void patchLink(item, { status: item.status === "active" ? "archived" : "active" })} disabled={mutating === item.id}>{mutating === item.id ? "…" : item.status === "active" ? "Arquivar" : "Restaurar"}</button>
                 </div>
               </div>)}
+              {nextCursor && <div className="pagination-row"><span>{links.length} de {totalLinks} carregados</span><button type="button" className="button quiet" disabled={loadingMore} onClick={() => void fetchWorkspaceData(workspace.id, search, statusFilter, campaignFilter, tagFilter, favoritesFilter, nextCursor, true)}>{loadingMore ? "Carregando…" : "Carregar mais"}</button></div>}
             </div>}
           </section>
         </div>}

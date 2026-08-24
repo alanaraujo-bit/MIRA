@@ -1,6 +1,6 @@
 {
   "name": "mira-link-intelligence",
-  "version": "0.2.0-alpha.1",
+  "version": "0.2.0-alpha.2",
   "private": true,
   "engines": {
     "node": ">=22.13.0"
@@ -12,6 +12,7 @@
     "test": "npm run build && node --test tests/rendered-html.test.mjs tests/link-rules.test.mjs",
     "test:smoke": "node tests/smoke-m1.mjs",
     "test:smoke:m2": "node tests/smoke-m2.mjs",
+    "test:smoke:m2-scale": "node tests/smoke-m2-scale.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate"
   },

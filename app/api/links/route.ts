@@ -14,14 +14,15 @@ export async function GET(request: Request) {
   const requestedStatus = searchParams.get("status") ?? "all";
   if (!new Set(["all", "active", "archived"]).has(requestedStatus)) return apiError("Status de filtro inválido.");
   try {
-    return Response.json({
-      links: await listLinks(user.userId, workspaceId, {
+    return Response.json(await listLinks(user.userId, workspaceId, {
         query,
         status: requestedStatus as "all" | "active" | "archived",
         campaignId: searchParams.get("campaignId") ?? "",
         tag: searchParams.get("tag") ?? "",
-      }),
-    });
+        favorites: searchParams.get("favorites") === "1",
+        cursor: searchParams.get("cursor") ?? undefined,
+        limit: Number(searchParams.get("limit") ?? 25),
+      }));
   } catch (error) {
     return errorResponse(error);
   }

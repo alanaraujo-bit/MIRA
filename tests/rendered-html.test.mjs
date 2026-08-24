@@ -23,7 +23,7 @@ test("server-renders the Mira Roadmap Live", async () => {
   assert.match(html, /Roadmap Live/);
   assert.match(html, /Abrir produto/);
   assert.match(html, /Milestone 2/);
-  assert.match(html, /Campaigns, canais, tags, UTMs e QR/);
+  assert.match(html, /Paginação estável, favoritos pessoais, padrões UTM e Campaign Inspector/);
   assert.match(html, /Critério de saída/);
   assert.match(html, /Abrir release/);
   assert.match(html, /mira-link-intelligence\.alanvitoraraujo1a\.chatgpt\.site/);
@@ -31,19 +31,23 @@ test("server-renders the Mira Roadmap Live", async () => {
 });
 
 test("ships product metadata, PWA files and truthful status language", async () => {
-  const [page, product, campaigns, repository, dataPlane, worker, patchRoute, responseHelpers, iconRoute, offlinePage, migration, m2Migration, layout, data, manifest, serviceWorker, social] = await Promise.all([
+  const [page, product, campaigns, inspector, repository, dataPlane, worker, patchRoute, favoriteRoute, presetRoute, responseHelpers, iconRoute, offlinePage, migration, m2Migration, m2ScaleMigration, layout, data, manifest, serviceWorker, social] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/product/product-app.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/product/campaigns/campaigns-app.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/product/campaigns/[id]/campaign-inspector.tsx", import.meta.url), "utf8"),
     readFile(new URL("../db/repository.ts", import.meta.url), "utf8"),
     readFile(new URL("../db/data-plane.ts", import.meta.url), "utf8"),
     readFile(new URL("../worker/index.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/links/[id]/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/links/[id]/favorite/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/utm-presets/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/response.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/icon/route.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/offline/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../drizzle/0000_gorgeous_shen.sql", import.meta.url), "utf8"),
     readFile(new URL("../drizzle/0001_tan_prowler.sql", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0002_needy_jamie_braddock.sql", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/roadmap-data.ts", import.meta.url), "utf8"),
     readFile(new URL("../public/manifest.webmanifest", import.meta.url), "utf8"),
@@ -60,7 +64,12 @@ test("ships product metadata, PWA files and truthful status language", async () 
   assert.match(product, /Arquivar/);
   assert.match(product, /Organização e UTMs/);
   assert.match(product, /\/qr\?download=1/);
+  assert.match(product, /Carregar mais/);
+  assert.match(product, /★ Favoritos/);
+  assert.match(product, /Salvar padrão/);
   assert.match(campaigns, /Uma campanha\. Todos os canais\./);
+  assert.match(inspector, /Campaign Inspector/);
+  assert.match(inspector, /ordenados por tráfego/);
   assert.match(repository, /WORKSPACE_FORBIDDEN/);
   assert.match(repository, /LINK_CONFLICT/);
   assert.match(dataPlane, /INSERT OR IGNORE INTO click_events/);
@@ -68,6 +77,8 @@ test("ships product metadata, PWA files and truthful status language", async () 
   assert.match(worker, /server-timing/);
   assert.match(worker, /content-security-policy/);
   assert.match(patchRoute, /export async function PATCH/);
+  assert.match(favoriteRoute, /setLinkFavorite/);
+  assert.match(presetRoute, /createUtmPreset/);
   assert.match(responseHelpers, /sec-fetch-site/);
   assert.match(responseHelpers, /application\/json/);
   assert.match(iconRoute, /ImageResponse/);
@@ -76,6 +87,9 @@ test("ships product metadata, PWA files and truthful status language", async () 
   assert.match(migration, /CREATE UNIQUE INDEX `idx_links_slug`/);
   assert.match(m2Migration, /CREATE TABLE `campaigns`/);
   assert.match(m2Migration, /CREATE TABLE `tags`/);
+  assert.match(m2ScaleMigration, /CREATE TABLE `link_favorites`/);
+  assert.match(m2ScaleMigration, /CREATE TABLE `utm_presets`/);
+  assert.match(m2ScaleMigration, /idx_links_workspace_updated_id/);
   assert.match(layout, /openGraph/);
   assert.match(layout, /summary_large_image/);
   assert.match(data, /Inspeção visual indisponível/);

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { applyUtmParameters, classifyDevice, normalizeSlug, normalizeTag, referrerHost, validateDestination } from "../lib/link-rules.ts";
+import { applyUtmParameters, classifyDevice, normalizeSlug, normalizeTag, normalizeUtmValue, referrerHost, validateDestination } from "../lib/link-rules.ts";
 
 test("normaliza slugs sem perder legibilidade", () => {
   assert.equal(normalizeSlug("  Lançamento São Paulo 2026! "), "lancamento-sao-paulo-2026");
@@ -33,4 +33,5 @@ test("normaliza tags e aplica UTMs sem apagar outros parâmetros", () => {
   assert.equal(result.searchParams.get("utm_medium"), "social");
   assert.equal(result.searchParams.get("utm_campaign"), "black-friday");
   assert.equal(result.searchParams.has("utm_term"), false);
+  assert.equal(normalizeUtmValue("  Mídia Paga / São Paulo  "), "midia-paga-sao-paulo");
 });

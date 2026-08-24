@@ -41,3 +41,4 @@ jobs:
           fi
           npm run test:smoke
           npm run test:smoke:m2
+          npm run test:smoke:m2-scale

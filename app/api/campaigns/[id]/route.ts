@@ -1,8 +1,19 @@
 import { getChatGPTUser } from "../../../chatgpt-auth";
-import { updateCampaign, type CampaignStatus } from "../../../../db/repository";
+import { getCampaignDetail, updateCampaign, type CampaignStatus } from "../../../../db/repository";
 import { apiError, errorResponse, writeRequestGuard } from "../../response";
 
 export const dynamic = "force-dynamic";
+
+export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
+  const user = await getChatGPTUser();
+  if (!user) return apiError("Autenticação necessária.", 401);
+  try {
+    const { id } = await context.params;
+    return Response.json({ campaign: await getCampaignDetail(user.userId, id) });
+  } catch (error) {
+    return errorResponse(error);
+  }
+}
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   const guard = writeRequestGuard(request);

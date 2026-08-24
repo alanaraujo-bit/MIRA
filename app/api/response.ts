@@ -31,5 +31,7 @@ export function errorResponse(error: unknown) {
   if (message === "LINK_CONFLICT") return apiError("Este link foi alterado em outra sessão. Atualize os dados e tente novamente.", 409);
   if (message === "CAMPAIGN_NOT_FOUND") return apiError("Campanha não encontrada.", 404);
   if (message === "CAMPAIGN_CONFLICT") return apiError("Esta campanha foi alterada em outra sessão. Atualize os dados e tente novamente.", 409);
+  if (message === "CURSOR_INVALID") return apiError("Cursor de paginação inválido.");
+  if (message === "UTM_PRESET_NOT_FOUND") return apiError("Padrão UTM não encontrado.", 404);
   return apiError(message, 400);
 }
