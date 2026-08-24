@@ -46,12 +46,33 @@ export const campaigns = sqliteTable("campaigns", {
   index("idx_campaigns_workspace_status").on(table.workspaceId, table.status),
 ]);
 
+export const domains = sqliteTable("domains", {
+  id: text("id").primaryKey(),
+  workspaceId: text("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+  hostname: text("hostname").notNull(),
+  verificationToken: text("verification_token").notNull(),
+  status: text("status", { enum: ["pending", "verified", "active", "error"] }).notNull().default("pending"),
+  dnsStatus: text("dns_status", { enum: ["pending", "verified", "mismatch", "unreachable"] }).notNull().default("pending"),
+  sslStatus: text("ssl_status", { enum: ["pending", "active", "error"] }).notNull().default("pending"),
+  lastError: text("last_error"),
+  verifiedAt: integer("verified_at"),
+  lastCheckedAt: integer("last_checked_at"),
+  createdByUserId: text("created_by_user_id").notNull().references(() => users.id),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+}, (table) => [
+  uniqueIndex("idx_domains_hostname").on(table.hostname),
+  index("idx_domains_workspace_updated").on(table.workspaceId, table.updatedAt),
+  index("idx_domains_workspace_status").on(table.workspaceId, table.status),
+]);
+
 export const links = sqliteTable("links", {
   id: text("id").primaryKey(),
   workspaceId: text("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   destinationUrl: text("destination_url").notNull(),
   slug: text("slug").notNull(),
+  domainId: text("domain_id").references(() => domains.id, { onDelete: "set null" }),
   campaignId: text("campaign_id").references(() => campaigns.id, { onDelete: "set null" }),
   channel: text("channel"),
   utmSource: text("utm_source"),
@@ -68,6 +89,7 @@ export const links = sqliteTable("links", {
   index("idx_links_workspace_updated_id").on(table.workspaceId, table.updatedAt, table.id),
   index("idx_links_workspace_status").on(table.workspaceId, table.status),
   index("idx_links_workspace_campaign").on(table.workspaceId, table.campaignId),
+  index("idx_links_workspace_domain").on(table.workspaceId, table.domainId),
 ]);
 
 export const tags = sqliteTable("tags", {

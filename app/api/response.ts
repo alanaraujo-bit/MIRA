@@ -33,5 +33,6 @@ export function errorResponse(error: unknown) {
   if (message === "CAMPAIGN_CONFLICT") return apiError("Esta campanha foi alterada em outra sessão. Atualize os dados e tente novamente.", 409);
   if (message === "CURSOR_INVALID") return apiError("Cursor de paginação inválido.");
   if (message === "UTM_PRESET_NOT_FOUND") return apiError("Padrão UTM não encontrado.", 404);
+  if (message === "DOMAIN_NOT_FOUND") return apiError("Domínio não encontrado.", 404);
   return apiError(message, 400);
 }

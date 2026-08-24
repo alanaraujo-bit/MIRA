@@ -23,7 +23,7 @@ test("server-renders the Mira Roadmap Live", async () => {
   assert.match(html, /Roadmap Live/);
   assert.match(html, /Abrir produto/);
   assert.match(html, /Milestone 2/);
-  assert.match(html, /Alpha 2 publicado com paginação estável, favoritos pessoais, padrões UTM e Campaign Inspector/);
+  assert.match(html, /Onboarding de domínio, verificação TXT e associação de Links validados localmente/);
   assert.match(html, /Critério de saída/);
   assert.match(html, /Abrir release/);
   assert.match(html, /mira-link-intelligence\.alanvitoraraujo1a\.chatgpt\.site/);
@@ -54,6 +54,13 @@ test("ships product metadata, PWA files and truthful status language", async () 
     readFile(new URL("../public/sw.js", import.meta.url), "utf8"),
     access(new URL("../public/og.png", import.meta.url)),
   ]);
+  const [domainsApp, domainsRoute, domainVerifyRoute, domainMigration, linkDomainMigration] = await Promise.all([
+    readFile(new URL("../app/product/domains/domains-app.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/domains/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/domains/[id]/verify/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0003_glossy_lady_bullseye.sql", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0004_fuzzy_wong.sql", import.meta.url), "utf8"),
+  ]);
 
   assert.match(page, /role="progressbar"/);
   assert.match(page, /aria-label="Filtrar por status"/);
@@ -70,9 +77,15 @@ test("ships product metadata, PWA files and truthful status language", async () 
   assert.match(campaigns, /Uma campanha\. Todos os canais\./);
   assert.match(inspector, /Campaign Inspector/);
   assert.match(inspector, /ordenados por tráfego/);
+  assert.match(domainsApp, /Verificação TXT/);
+  assert.match(domainsApp, /Gate de ativação/);
+  assert.match(domainsRoute, /createDomain/);
+  assert.match(domainVerifyRoute, /checkDomainDns/);
   assert.match(repository, /WORKSPACE_FORBIDDEN/);
   assert.match(repository, /LINK_CONFLICT/);
   assert.match(dataPlane, /INSERT OR IGNORE INTO click_events/);
+  assert.match(dataPlane, /JOIN domains d ON d\.id = l\.domain_id/);
+  assert.match(dataPlane, /d\.status = 'active'/);
   assert.match(worker, /ctx\.waitUntil\(recordClick/);
   assert.match(worker, /server-timing/);
   assert.match(worker, /content-security-policy/);
@@ -89,6 +102,9 @@ test("ships product metadata, PWA files and truthful status language", async () 
   assert.match(m2Migration, /CREATE TABLE `tags`/);
   assert.match(m2ScaleMigration, /CREATE TABLE `link_favorites`/);
   assert.match(m2ScaleMigration, /CREATE TABLE `utm_presets`/);
+  assert.match(domainMigration, /CREATE TABLE `domains`/);
+  assert.match(linkDomainMigration, /ADD `domain_id`/);
+  assert.match(linkDomainMigration, /ON DELETE SET NULL/);
   assert.match(m2ScaleMigration, /idx_links_workspace_updated_id/);
   assert.match(layout, /openGraph/);
   assert.match(layout, /summary_large_image/);

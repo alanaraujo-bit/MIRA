@@ -5,12 +5,12 @@ type Phase = { id: string; code: string; title: string; intent: string; mileston
 const task = (title: string, detail: string, status: Status = "queued", evidence?: string, blocker?: string): Task => ({ title, detail, status, evidence, blocker });
 
 export const project = {
-  release: "0.2.0-alpha.2", environment: "Sites · alpha 2 privado ao vivo", commit: "main · 09cf714 publicado",
+  release: "0.2.0-alpha.3", environment: "Sites · alpha 2 privado ao vivo", commit: "main · candidato M2 alpha 3",
   liveUrl: "https://mira-link-intelligence.alanvitoraraujo1a.chatgpt.site",
-  updatedIso: "2026-08-24T15:00:00-03:00", updatedLabel: "24 ago 2026 · 15:00 BRT",
+  updatedIso: "2026-08-24T15:34:00-03:00", updatedLabel: "24 ago 2026 · 15:34 BRT",
   currentFocus: "Milestone 2 · Organização profissional",
-  currentDetail: "Alpha 2 publicado com paginação estável, favoritos pessoais, padrões UTM e Campaign Inspector; domínios são o próximo corte funcional.",
-  currentGate: "inspeção visual + domínios customizados",
+  currentDetail: "Onboarding de domínio, verificação TXT e associação de Links validados localmente; preparando a publicação alpha 3.",
+  currentGate: "publicação alpha 3 + inspeção visual + edge público",
   validations: [
     { status: "done", title: "Pesquisa inicial da marca", detail: "Triagem pública de categoria concluída; clearance jurídico segue pendente.", time: "24 ago" },
     { status: "done", title: "Servidor de preview", detail: "Base oficial de publicação inicializada e servindo localmente.", time: "24 ago" },
@@ -36,9 +36,11 @@ export const project = {
     { status: "done", title: "Campaign Inspector local", detail: "Campaign com 27 Links consolidou dois canais, ranking de Links e métricas sem dados de demonstração.", time: "24 ago" },
     { status: "done", title: "M2 alpha 2 publicado", detail: "Sites versão 10 publicada no ambiente privado a partir do commit 09cf714; deployment concluído com sucesso.", time: "24 ago" },
     { status: "done", title: "Schema de escala hospedado", detail: "Binding DB verificado com 10 tabelas; link_favorites e utm_presets foram aplicadas ao lado do núcleo M2.", time: "24 ago" },
+    { status: "done", title: "Fluxo de domínio local", detail: "Criar → instrução TXT → consulta DNS real → divergência acionável → Link associado → remoção segura foi executado em D1.", time: "24 ago" },
+    { status: "done", title: "Controles de domínio", detail: "URL em vez de hostname, duplicata e acesso externo foram rejeitados; 8/8 testes e quatro smokes seguem aprovados.", time: "24 ago" },
   ],
   issues: [
-    { severity: "medium", code: "P1", title: "Redirect público ainda indisponível", detail: "O preview atual é owner-only; links distribuíveis exigem uma superfície pública separada e seu gate de acesso." },
+    { severity: "medium", code: "P1", title: "Ativação pública de domínio indisponível", detail: "O preview é owner-only; propriedade DNS pode ser confirmada, mas roteamento e SSL distribuíveis exigem uma superfície edge pública separada." },
     { severity: "medium", code: "P2", title: "Inspeção visual indisponível", detail: "A conexão foi reavaliada e continua sem navegador controlável; o gate visual permanece aberto." },
     { severity: "low", code: "P3", title: "Clearance jurídico da marca", detail: "Busca formal de marca e domínio definitivo será necessária antes do lançamento comercial." },
     { severity: "low", code: "P4", title: "Advisories moderados no drizzle-kit", detail: "Quatro ocorrências de desenvolvimento vêm do loader interno; produção tem zero advisories e o fix automático exigiria downgrade incompatível. Monitorar atualização segura." },
@@ -52,6 +54,7 @@ export const project = {
     { id: "006", title: "Redirect possui dependência mínima", summary: "O worker consulta apenas o módulo do data plane e devolve o 302 antes de aguardar a persistência idempotente do evento.", status: "Aceita" },
     { id: "007", title: "PWA não armazena dados privados", summary: "Shell público pode usar cache; produto, APIs, autenticação e redirects permanecem network-only.", status: "Aceita" },
     { id: "008", title: "Escala progressiva na biblioteca", summary: "Links usam paginação keyset estável; favoritos são preferências pessoais e presets UTM pertencem ao Workspace.", status: "Aceita" },
+    { id: "009", title: "Propriedade não equivale a ativação", summary: "TXT comprova controle do domínio; tráfego e SSL só recebem estado ativo depois de provisionamento público real.", status: "Aceita" },
   ],
 };
 
@@ -79,7 +82,7 @@ export const phases: Phase[] = [
     { id: "m2", code: "M2", release: "Release 0.2.0", title: "Organização profissional", outcome: "Links operam em campanhas, tags, domínios e sistemas de busca eficientes.", exitCriteria: "Busca, filtros, campanhas e domínio base funcionam com dados reais e conjuntos grandes paginados.", tasks: [
       task("Campaigns de primeira classe", "Criação, canais, links associados e visão consolidada inicial.", "active", "Inspector, comparação por canal e ranking foram testados e publicados no alpha 2; inspeção visual ainda está aberta."),
       task("Busca e filtros", "Busca global, filtros compostos, tags, favoritos e estados persistidos.", "active", "Texto/status/campanha/tag/favoritos combinam com paginação keyset validada em 27 registros e publicada; gate visual segue aberto."),
-      task("Domínios customizados", "Onboarding DNS, verificação, SSL, saúde e mensagens acionáveis."),
+      task("Domínios customizados", "Onboarding DNS, verificação, SSL, saúde e mensagens acionáveis.", "active", "TXT e consulta DNS real, estado operacional e associação de Link passaram localmente; publicação e edge/SSL públicos seguem abertos."),
       task("UTM management", "Templates, convenções, validação e prevenção de inconsistências.", "active", "Presets compartilhados e convenção lower-kebab foram validados; edição dedicada e análise de inconsistências ainda evoluirão."),
       task("QR integrado", "Geração, personalização, exportação e atribuição ao mesmo Link e Campaign.", "active", "SVG de alta correção foi publicado a partir do endereço rastreável com autorização de Workspace; personalização avançada e gate visual seguem abertos."),
     ] },

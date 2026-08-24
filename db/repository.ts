@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers";
 import type { ChatGPTUser } from "../app/chatgpt-auth";
+import { normalizeDomainHostname, type DomainDnsResult } from "../lib/domain-verification";
 import { applyUtmParameters, normalizeSlug, normalizeTag, normalizeUtmValue, type UtmFields } from "../lib/link-rules";
 
 export type WorkspaceRole = "owner" | "admin" | "editor" | "viewer";
@@ -7,7 +8,7 @@ type WorkspaceRow = { id: string; name: string; slug: string; role: WorkspaceRol
 export type LinkStatus = "active" | "archived" | "blocked";
 export type LinkRow = {
   id: string; workspace_id: string; title: string; destination_url: string; slug: string;
-  campaign_id: string | null; campaign_name: string | null; channel: string | null;
+  domain_id: string | null; domain_hostname: string | null; campaign_id: string | null; campaign_name: string | null; channel: string | null;
   utm_source: string | null; utm_medium: string | null; utm_campaign: string | null;
   utm_content: string | null; utm_term: string | null; tags: string[]; status: LinkStatus;
   created_at: number; updated_at: number; clicks: number; is_favorite: boolean;
@@ -23,6 +24,13 @@ export type UtmPresetRow = {
   id: string; workspace_id: string; name: string; normalized_name: string; source: string | null;
   medium: string | null; campaign: string | null; content: string | null; term: string | null;
   created_at: number; updated_at: number;
+};
+export type DomainStatus = "pending" | "verified" | "active" | "error";
+export type DomainDnsStatus = "pending" | "verified" | "mismatch" | "unreachable";
+export type DomainRow = {
+  id: string; workspace_id: string; hostname: string; verification_token: string; status: DomainStatus;
+  dns_status: DomainDnsStatus; ssl_status: "pending" | "active" | "error"; last_error: string | null;
+  verified_at: number | null; last_checked_at: number | null; created_at: number; updated_at: number;
 };
 export type LinkPage = { links: LinkRow[]; nextCursor: string | null; total: number };
 export type CampaignDetail = CampaignRow & {
@@ -53,9 +61,16 @@ async function ensureSchema(): Promise<void> {
         workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE, name TEXT NOT NULL, objective TEXT,
         status TEXT DEFAULT 'active' NOT NULL, starts_at INTEGER, ends_at INTEGER,
         created_by_user_id TEXT NOT NULL REFERENCES users(id), created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)`),
+      d1.prepare(`CREATE TABLE IF NOT EXISTS domains (id TEXT PRIMARY KEY NOT NULL,
+        workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE, hostname TEXT NOT NULL,
+        verification_token TEXT NOT NULL, status TEXT DEFAULT 'pending' NOT NULL,
+        dns_status TEXT DEFAULT 'pending' NOT NULL, ssl_status TEXT DEFAULT 'pending' NOT NULL,
+        last_error TEXT, verified_at INTEGER, last_checked_at INTEGER,
+        created_by_user_id TEXT NOT NULL REFERENCES users(id), created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)`),
       d1.prepare(`CREATE TABLE IF NOT EXISTS links (id TEXT PRIMARY KEY NOT NULL,
         workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE, title TEXT NOT NULL,
-        destination_url TEXT NOT NULL, slug TEXT NOT NULL, campaign_id TEXT REFERENCES campaigns(id) ON DELETE SET NULL,
+        destination_url TEXT NOT NULL, slug TEXT NOT NULL, domain_id TEXT REFERENCES domains(id) ON DELETE SET NULL,
+        campaign_id TEXT REFERENCES campaigns(id) ON DELETE SET NULL,
         channel TEXT, utm_source TEXT, utm_medium TEXT, utm_campaign TEXT, utm_content TEXT, utm_term TEXT,
         status TEXT DEFAULT 'active' NOT NULL, created_by_user_id TEXT NOT NULL REFERENCES users(id),
         created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)`),
@@ -80,6 +95,7 @@ async function ensureSchema(): Promise<void> {
     const additions: Record<string, string> = {
       campaign_id: "TEXT REFERENCES campaigns(id) ON DELETE SET NULL", channel: "TEXT", utm_source: "TEXT",
       utm_medium: "TEXT", utm_campaign: "TEXT", utm_content: "TEXT", utm_term: "TEXT",
+      domain_id: "TEXT REFERENCES domains(id) ON DELETE SET NULL",
     };
     for (const [name, definition] of Object.entries(additions)) {
       if (!names.has(name)) await d1.prepare(`ALTER TABLE links ADD COLUMN ${name} ${definition}`).run();
@@ -90,11 +106,15 @@ async function ensureSchema(): Promise<void> {
       d1.prepare("CREATE INDEX IF NOT EXISTS idx_workspace_members_user ON workspace_members(user_id)"),
       d1.prepare("CREATE INDEX IF NOT EXISTS idx_campaigns_workspace_updated ON campaigns(workspace_id, updated_at)"),
       d1.prepare("CREATE INDEX IF NOT EXISTS idx_campaigns_workspace_status ON campaigns(workspace_id, status)"),
+      d1.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_domains_hostname ON domains(hostname)"),
+      d1.prepare("CREATE INDEX IF NOT EXISTS idx_domains_workspace_updated ON domains(workspace_id, updated_at)"),
+      d1.prepare("CREATE INDEX IF NOT EXISTS idx_domains_workspace_status ON domains(workspace_id, status)"),
       d1.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_links_slug ON links(slug)"),
       d1.prepare("DROP INDEX IF EXISTS idx_links_workspace_updated"),
       d1.prepare("CREATE INDEX IF NOT EXISTS idx_links_workspace_updated_id ON links(workspace_id, updated_at, id)"),
       d1.prepare("CREATE INDEX IF NOT EXISTS idx_links_workspace_status ON links(workspace_id, status)"),
       d1.prepare("CREATE INDEX IF NOT EXISTS idx_links_workspace_campaign ON links(workspace_id, campaign_id)"),
+      d1.prepare("CREATE INDEX IF NOT EXISTS idx_links_workspace_domain ON links(workspace_id, domain_id)"),
       d1.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_tags_workspace_normalized ON tags(workspace_id, normalized_name)"),
       d1.prepare("CREATE INDEX IF NOT EXISTS idx_link_tags_tag ON link_tags(tag_id)"),
       d1.prepare("CREATE INDEX IF NOT EXISTS idx_link_favorites_user_created ON link_favorites(user_id, created_at)"),
@@ -177,12 +197,12 @@ function hydrateLink(row: LinkSqlRow): LinkRow {
 }
 
 const linkSelect = `SELECT l.id, l.workspace_id, l.title, l.destination_url, l.slug,
-  l.campaign_id, c.name AS campaign_name, l.channel, l.utm_source, l.utm_medium,
+  l.domain_id, d.hostname AS domain_hostname, l.campaign_id, c.name AS campaign_name, l.channel, l.utm_source, l.utm_medium,
   l.utm_campaign, l.utm_content, l.utm_term, l.status, l.created_at, l.updated_at,
   (SELECT COUNT(*) FROM click_events ce WHERE ce.link_id = l.id) AS clicks,
   EXISTS(SELECT 1 FROM link_favorites lf WHERE lf.link_id = l.id AND lf.user_id = ?) AS is_favorite,
   (SELECT GROUP_CONCAT(t.name, char(31)) FROM link_tags lt JOIN tags t ON t.id = lt.tag_id WHERE lt.link_id = l.id) AS tag_names
-  FROM links l LEFT JOIN campaigns c ON c.id = l.campaign_id`;
+  FROM links l LEFT JOIN campaigns c ON c.id = l.campaign_id LEFT JOIN domains d ON d.id = l.domain_id`;
 
 function encodeLinkCursor(updatedAt: number, id: string): string {
   return btoa(`${updatedAt}:${id}`).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
@@ -241,6 +261,13 @@ async function assertCampaign(workspaceId: string, campaignId: string | null): P
   if (!row) throw new Error("A campanha selecionada não pertence a este Workspace.");
 }
 
+async function assertDomain(workspaceId: string, domainId: string | null): Promise<void> {
+  if (!domainId) return;
+  const row = await database().prepare("SELECT id FROM domains WHERE id = ? AND workspace_id = ?")
+    .bind(domainId, workspaceId).first();
+  if (!row) throw new Error("O domínio selecionado não pertence a este Workspace.");
+}
+
 async function syncLinkTags(workspaceId: string, linkId: string, values: string[]): Promise<void> {
   const mapped = values.map(normalizeTag).filter((tag): tag is NonNullable<ReturnType<typeof normalizeTag>> => Boolean(tag));
   const normalized = [...new Map(mapped.map((tag) => [tag.normalizedName, tag])).values()].slice(0, 8);
@@ -258,11 +285,13 @@ async function syncLinkTags(workspaceId: string, linkId: string, values: string[
 
 export async function createLink(input: {
   userId: string; workspaceId: string; title: string; destinationUrl: string; slug?: string;
-  campaignId?: string | null; channel?: string | null; tags?: string[]; utm?: UtmFields;
+  domainId?: string | null; campaignId?: string | null; channel?: string | null; tags?: string[]; utm?: UtmFields;
 }): Promise<LinkRow> {
   await requireWrite(input.userId, input.workspaceId);
   const campaignId = cleanNullable(input.campaignId, 64);
+  const domainId = cleanNullable(input.domainId, 64);
   await assertCampaign(input.workspaceId, campaignId);
+  await assertDomain(input.workspaceId, domainId);
   const destinationUrl = applyUtmParameters(input.destinationUrl, input.utm ?? {});
   const title = input.title.trim().slice(0, 100);
   if (!title) throw new Error("Dê um nome ao link.");
@@ -273,10 +302,10 @@ export async function createLink(input: {
   const channel = cleanNullable(input.channel, 50);
   const utm = input.utm ?? {};
   try {
-    await database().prepare(`INSERT INTO links (id, workspace_id, title, destination_url, slug, campaign_id, channel,
+    await database().prepare(`INSERT INTO links (id, workspace_id, title, destination_url, slug, domain_id, campaign_id, channel,
       utm_source, utm_medium, utm_campaign, utm_content, utm_term, status, created_by_user_id, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?)`)
-      .bind(id, input.workspaceId, title, destinationUrl, slug, campaignId, channel,
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?)`)
+      .bind(id, input.workspaceId, title, destinationUrl, slug, domainId, campaignId, channel,
         normalizeUtmValue(utm.source), normalizeUtmValue(utm.medium), normalizeUtmValue(utm.campaign), normalizeUtmValue(utm.content),
         normalizeUtmValue(utm.term), input.userId, now, now).run();
     await syncLinkTags(input.workspaceId, id, input.tags ?? []);
@@ -304,7 +333,7 @@ export async function getLinkForMember(userId: string, linkId: string): Promise<
 
 export async function updateLink(input: {
   userId: string; linkId: string; title?: string; destinationUrl?: string; slug?: string;
-  campaignId?: string | null; channel?: string | null; tags?: string[]; utm?: UtmFields;
+  domainId?: string | null; campaignId?: string | null; channel?: string | null; tags?: string[]; utm?: UtmFields;
   status?: "active" | "archived"; expectedUpdatedAt: number;
 }): Promise<LinkRow> {
   const { link: existing, role } = await linkForMember(input.userId, input.linkId);
@@ -319,14 +348,16 @@ export async function updateLink(input: {
   const status = input.status ?? existing.status;
   if (status === "blocked") throw new Error("Links bloqueados exigem revisão interna.");
   const campaignId = input.campaignId === undefined ? existing.campaign_id : cleanNullable(input.campaignId, 64);
+  const domainId = input.domainId === undefined ? existing.domain_id : cleanNullable(input.domainId, 64);
   await assertCampaign(existing.workspace_id, campaignId);
+  await assertDomain(existing.workspace_id, domainId);
   const channel = input.channel === undefined ? existing.channel : cleanNullable(input.channel, 50);
   const now = Math.max(Date.now(), input.expectedUpdatedAt + 1);
   try {
-    const result = await database().prepare(`UPDATE links SET title = ?, destination_url = ?, slug = ?, campaign_id = ?, channel = ?,
+    const result = await database().prepare(`UPDATE links SET title = ?, destination_url = ?, slug = ?, domain_id = ?, campaign_id = ?, channel = ?,
       utm_source = ?, utm_medium = ?, utm_campaign = ?, utm_content = ?, utm_term = ?, status = ?, updated_at = ?
       WHERE id = ? AND workspace_id = ? AND updated_at = ?`)
-      .bind(title, destinationUrl, slug, campaignId, channel, normalizeUtmValue(utm.source), normalizeUtmValue(utm.medium),
+      .bind(title, destinationUrl, slug, domainId, campaignId, channel, normalizeUtmValue(utm.source), normalizeUtmValue(utm.medium),
         normalizeUtmValue(utm.campaign), normalizeUtmValue(utm.content), normalizeUtmValue(utm.term), status, now,
         existing.id, existing.workspace_id, input.expectedUpdatedAt).run();
     if (!result.meta.changes) throw new Error("LINK_CONFLICT");
@@ -464,6 +495,64 @@ export async function deleteUtmPreset(userId: string, presetId: string): Promise
   if (!row) throw new Error("UTM_PRESET_NOT_FOUND");
   if (!canWrite(row.role)) throw new Error("WORKSPACE_READ_ONLY");
   await database().prepare("DELETE FROM utm_presets WHERE id = ? AND workspace_id = ?").bind(presetId, row.workspace_id).run();
+}
+
+export async function listDomains(userId: string, workspaceId: string): Promise<DomainRow[]> {
+  await requireWorkspace(userId, workspaceId);
+  const result = await database().prepare(`SELECT id, workspace_id, hostname, verification_token, status,
+    dns_status, ssl_status, last_error, verified_at, last_checked_at, created_at, updated_at
+    FROM domains WHERE workspace_id = ? ORDER BY updated_at DESC, id DESC`).bind(workspaceId).all<DomainRow>();
+  return result.results;
+}
+
+export async function createDomain(input: { userId: string; workspaceId: string; hostname: string }): Promise<DomainRow> {
+  await requireWrite(input.userId, input.workspaceId);
+  const hostname = normalizeDomainHostname(input.hostname);
+  const id = crypto.randomUUID();
+  const verificationToken = crypto.randomUUID().replace(/-/g, "");
+  const now = Date.now();
+  try {
+    await database().prepare(`INSERT INTO domains (id, workspace_id, hostname, verification_token, status, dns_status,
+      ssl_status, last_error, verified_at, last_checked_at, created_by_user_id, created_at, updated_at)
+      VALUES (?, ?, ?, ?, 'pending', 'pending', 'pending', NULL, NULL, NULL, ?, ?, ?)`)
+      .bind(id, input.workspaceId, hostname, verificationToken, input.userId, now, now).run();
+  } catch (error) {
+    if (String(error).toLowerCase().includes("unique")) throw new Error("Este domínio já está conectado a um Workspace.");
+    throw error;
+  }
+  return { id, workspace_id: input.workspaceId, hostname, verification_token: verificationToken, status: "pending",
+    dns_status: "pending", ssl_status: "pending", last_error: null, verified_at: null, last_checked_at: null,
+    created_at: now, updated_at: now };
+}
+
+export async function getDomainForMember(userId: string, domainId: string): Promise<{ domain: DomainRow; role: WorkspaceRole }> {
+  await ensureSchema();
+  const row = await database().prepare(`SELECT d.id, d.workspace_id, d.hostname, d.verification_token, d.status,
+    d.dns_status, d.ssl_status, d.last_error, d.verified_at, d.last_checked_at, d.created_at, d.updated_at, wm.role
+    FROM domains d JOIN workspace_members wm ON wm.workspace_id = d.workspace_id
+    WHERE d.id = ? AND wm.user_id = ? LIMIT 1`).bind(domainId, userId).first<DomainRow & { role: WorkspaceRole }>();
+  if (!row) throw new Error("DOMAIN_NOT_FOUND");
+  const { role, ...domain } = row;
+  return { domain, role };
+}
+
+export async function recordDomainDnsCheck(userId: string, domainId: string, result: DomainDnsResult): Promise<DomainRow> {
+  const { domain, role } = await getDomainForMember(userId, domainId);
+  if (!canWrite(role)) throw new Error("WORKSPACE_READ_ONLY");
+  const verified = result.status === "verified";
+  const now = Math.max(Date.now(), domain.updated_at + 1);
+  await database().prepare(`UPDATE domains SET status = ?, dns_status = ?, last_error = ?, verified_at = ?,
+    last_checked_at = ?, updated_at = ? WHERE id = ? AND workspace_id = ?`).bind(
+      verified ? "verified" : "pending", result.status, result.error, verified ? (domain.verified_at ?? result.checkedAt) : domain.verified_at,
+      result.checkedAt, now, domainId, domain.workspace_id).run();
+  return (await getDomainForMember(userId, domainId)).domain;
+}
+
+export async function deleteDomain(userId: string, domainId: string): Promise<void> {
+  const { domain, role } = await getDomainForMember(userId, domainId);
+  if (!canWrite(role)) throw new Error("WORKSPACE_READ_ONLY");
+  if (domain.status === "active") throw new Error("Desative o domínio antes de removê-lo.");
+  await database().prepare("DELETE FROM domains WHERE id = ? AND workspace_id = ?").bind(domainId, domain.workspace_id).run();
 }
 
 export async function listTags(userId: string, workspaceId: string): Promise<TagRow[]> {

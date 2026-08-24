@@ -1,7 +1,7 @@
 /** Cloudflare Worker entry point for the vinext-starter template. */
 import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
-import { recordClick, resolveLink } from "../db/data-plane";
+import { recordClick, resolveBrandedLink, resolveLink, type ResolvedLink } from "../db/data-plane";
 
 interface Env {
   ASSETS: Fetcher;
@@ -43,29 +43,18 @@ const worker = {
 
       const link = await resolveLink(env.DB, slug);
       if (!link || link.status !== "active") return unavailableLink();
+      return trackedRedirect(request, env.DB, ctx, link, startedAt);
+    }
 
-      const eventId = crypto.randomUUID();
-      ctx.waitUntil(recordClick(env.DB, {
-        eventId,
-        linkId: link.id,
-        workspaceId: link.workspace_id,
-        referrer: request.headers.get("referer"),
-        userAgent: request.headers.get("user-agent"),
-      }).catch(() => {
-        console.error("click_ingest_failed", { eventId, linkId: link.id });
-      }));
-
-      return new Response(null, {
-        status: 302,
-        headers: {
-          location: link.destination_url,
-          "cache-control": "private, no-store, max-age=0",
-          "server-timing": `resolve;dur=${(performance.now() - startedAt).toFixed(1)}`,
-          "x-mira-request-id": eventId,
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "x-content-type-options": "nosniff",
-        },
-      });
+    const brandedMatch = url.pathname.match(/^\/([^/]+)\/?$/);
+    if (brandedMatch) {
+      let slug: string;
+      try { slug = decodeURIComponent(brandedMatch[1]); } catch { slug = ""; }
+      if (slug) {
+        const startedAt = performance.now();
+        const link = await resolveBrandedLink(env.DB, url.hostname, slug);
+        if (link?.status === "active") return trackedRedirect(request, env.DB, ctx, link, startedAt);
+      }
     }
 
     if (url.pathname === "/_vinext/image") {
@@ -82,6 +71,27 @@ const worker = {
     return secureResponse(await handler.fetch(request, env, ctx));
   },
 };
+
+function trackedRedirect(request: Request, database: D1Database, ctx: ExecutionContext, link: ResolvedLink, startedAt: number): Response {
+  const eventId = crypto.randomUUID();
+  ctx.waitUntil(recordClick(database, {
+    eventId,
+    linkId: link.id,
+    workspaceId: link.workspace_id,
+    referrer: request.headers.get("referer"),
+    userAgent: request.headers.get("user-agent"),
+  }).catch(() => {
+    console.error("click_ingest_failed", { eventId, linkId: link.id });
+  }));
+  return new Response(null, { status: 302, headers: {
+    location: link.destination_url,
+    "cache-control": "private, no-store, max-age=0",
+    "server-timing": `resolve;dur=${(performance.now() - startedAt).toFixed(1)}`,
+    "x-mira-request-id": eventId,
+    "referrer-policy": "strict-origin-when-cross-origin",
+    "x-content-type-options": "nosniff",
+  } });
+}
 
 function unavailableLink(): Response {
   return new Response("Link indisponível", {

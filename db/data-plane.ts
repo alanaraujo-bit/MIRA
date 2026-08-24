@@ -16,6 +16,16 @@ export async function resolveLink(database: D1Database, slug: string): Promise<R
   `).bind(slug).first<ResolvedLink>();
 }
 
+export async function resolveBrandedLink(database: D1Database, hostname: string, slug: string): Promise<ResolvedLink | null> {
+  return database.prepare(`
+    SELECT l.id, l.workspace_id, l.destination_url, l.status
+    FROM links l
+    JOIN domains d ON d.id = l.domain_id
+    WHERE d.hostname = ? AND d.status = 'active' AND l.slug = ?
+    LIMIT 1
+  `).bind(hostname.toLowerCase().replace(/\.$/, ""), slug).first<ResolvedLink>();
+}
+
 export async function recordClick(database: D1Database, input: {
   eventId: string;
   linkId: string;

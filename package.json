@@ -1,6 +1,6 @@
 {
   "name": "mira-link-intelligence",
-  "version": "0.2.0-alpha.2",
+  "version": "0.2.0-alpha.3",
   "private": true,
   "engines": {
     "node": ">=22.13.0"
@@ -9,10 +9,11 @@
     "dev": "node scripts/run-vinext.mjs dev",
     "build": "node scripts/run-vinext.mjs build",
     "start": "node scripts/run-vinext.mjs start",
-    "test": "npm run build && node --test tests/rendered-html.test.mjs tests/link-rules.test.mjs",
+    "test": "npm run build && node --test tests/rendered-html.test.mjs tests/link-rules.test.mjs tests/domain-verification.test.mjs",
     "test:smoke": "node tests/smoke-m1.mjs",
     "test:smoke:m2": "node tests/smoke-m2.mjs",
     "test:smoke:m2-scale": "node tests/smoke-m2-scale.mjs",
+    "test:smoke:domains": "node tests/smoke-domains.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate"
   },

@@ -11,6 +11,8 @@ type LinkItem = {
   title: string;
   destination_url: string;
   slug: string;
+  domain_id: string | null;
+  domain_hostname: string | null;
   status: LinkStatus;
   created_at: number;
   updated_at: number;
@@ -29,6 +31,7 @@ type LinkItem = {
 type Campaign = { id: string; name: string; status: "planning" | "active" | "ended"; links: number; clicks: number };
 type Tag = { id: string; name: string; normalized_name: string; links: number };
 type UtmPreset = { id: string; name: string; source: string | null; medium: string | null; campaign: string | null; content: string | null; term: string | null };
+type Domain = { id: string; hostname: string; dns_status: "pending" | "verified" | "mismatch" | "unreachable"; status: "pending" | "verified" | "active" | "error" };
 type UtmDraft = { source: string; medium: string; campaign: string; content: string; term: string };
 type Summary = { activeLinks: number; clicks7d: number; devices: { name: string; value: number }[] };
 type Notice = { tone: "success" | "error" | "info"; text: string } | null;
@@ -50,6 +53,7 @@ export default function ProductApp({ user }: { user: { displayName: string; emai
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [presets, setPresets] = useState<UtmPreset[]>([]);
+  const [domains, setDomains] = useState<Domain[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [totalLinks, setTotalLinks] = useState(0);
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
@@ -86,12 +90,13 @@ export default function ProductApp({ user }: { user: { displayName: string; emai
     const params = new URLSearchParams({ workspaceId, query, status, campaignId, tag, favorites: favorites ? "1" : "0", limit: "25" });
     if (cursor) params.set("cursor", cursor);
     try {
-      const [linkData, summaryData, campaignData, tagData, presetData] = await Promise.all([
+      const [linkData, summaryData, campaignData, tagData, presetData, domainData] = await Promise.all([
         jsonRequest<{ links: LinkItem[]; nextCursor: string | null; total: number }>(`/api/links?${params.toString()}`),
         jsonRequest<{ summary: Summary }>(`/api/analytics/summary?workspaceId=${encodeURIComponent(workspaceId)}`),
         jsonRequest<{ campaigns: Campaign[] }>(`/api/campaigns?workspaceId=${encodeURIComponent(workspaceId)}`),
         jsonRequest<{ tags: Tag[] }>(`/api/tags?workspaceId=${encodeURIComponent(workspaceId)}`),
         jsonRequest<{ presets: UtmPreset[] }>(`/api/utm-presets?workspaceId=${encodeURIComponent(workspaceId)}`),
+        jsonRequest<{ domains: Domain[] }>(`/api/domains?workspaceId=${encodeURIComponent(workspaceId)}`),
       ]);
       setLinks((current) => append ? [...current, ...linkData.links.filter((link) => !current.some((item) => item.id === link.id))] : linkData.links);
       setNextCursor(linkData.nextCursor);
@@ -100,6 +105,7 @@ export default function ProductApp({ user }: { user: { displayName: string; emai
       setCampaigns(campaignData.campaigns);
       setTags(tagData.tags);
       setPresets(presetData.presets);
+      setDomains(domainData.domains);
       setCollectionState("ready");
     } catch (error) {
       setCollectionState("error");
@@ -160,6 +166,7 @@ export default function ProductApp({ user }: { user: { displayName: string; emai
           title: form.get("title"),
           destinationUrl: form.get("destinationUrl"),
           slug: form.get("slug"),
+          domainId: form.get("domainId") || null,
           campaignId: form.get("campaignId") || null,
           channel: form.get("channel") || null,
           tags: String(form.get("tags") ?? "").split(",").map((tag) => tag.trim()).filter(Boolean),
@@ -185,7 +192,7 @@ export default function ProductApp({ user }: { user: { displayName: string; emai
   }
 
   async function patchLink(item: LinkItem, changes: Partial<Pick<LinkItem, "title" | "slug" | "status">> & {
-    destinationUrl?: string; campaignId?: string | null; channel?: string | null; tags?: string[];
+    destinationUrl?: string; domainId?: string | null; campaignId?: string | null; channel?: string | null; tags?: string[];
     utm?: { source?: string; medium?: string; campaign?: string; content?: string; term?: string };
   }) {
     setMutating(item.id);
@@ -220,6 +227,7 @@ export default function ProductApp({ user }: { user: { displayName: string; emai
       title: String(form.get("title") ?? ""),
       destinationUrl: String(form.get("destinationUrl") ?? ""),
       slug: String(form.get("slug") ?? ""),
+      domainId: String(form.get("domainId") ?? "") || null,
       campaignId: String(form.get("campaignId") ?? "") || null,
       channel: String(form.get("channel") ?? "") || null,
       tags: String(form.get("tags") ?? "").split(",").map((tag) => tag.trim()).filter(Boolean),
@@ -230,7 +238,7 @@ export default function ProductApp({ user }: { user: { displayName: string; emai
   }
 
   async function copyLink(item: LinkItem) {
-    const value = `${window.location.origin}/go/${item.slug}`;
+    const value = item.domain_hostname ? `https://${item.domain_hostname}/${item.slug}` : `${window.location.origin}/go/${item.slug}`;
     try {
       await navigator.clipboard.writeText(value);
       setCopied(item.id);
@@ -312,8 +320,9 @@ export default function ProductApp({ user }: { user: { displayName: string; emai
         <nav aria-label="Produto">
           <a className="selected" href="#overview"><span aria-hidden="true">⌂</span>Visão geral</a>
           <a href="#links"><span aria-hidden="true">↗</span>Links</a>
-          <span aria-disabled="true"><span aria-hidden="true">◌</span>Analytics <small>em breve</small></span>
           <Link href="/product/campaigns"><span aria-hidden="true">◇</span>Campaigns</Link>
+          <Link href="/product/domains"><span aria-hidden="true">◎</span>Domínios</Link>
+          <span aria-disabled="true"><span aria-hidden="true">◌</span>Analytics <small>em breve</small></span>
         </nav>
         <Link className="roadmap-return" href="/">Roadmap Live <span>↗</span></Link>
       </aside>
@@ -349,6 +358,7 @@ export default function ProductApp({ user }: { user: { displayName: string; emai
               <label><span>Slug opcional</span><div className="slug-input"><small>/go/</small><input name="slug" autoComplete="off" maxLength={48} pattern="[A-Za-z0-9-]{3,48}" placeholder="lancamento" /></div></label>
               <button className="button primary" type="submit" disabled={creating}>{creating ? "Criando…" : "Criar link"}</button>
               <details className="advanced-fields"><summary>Organização e UTMs <span>opcional</span></summary><div>
+                <label><span>Domínio de marca</span><select name="domainId" defaultValue=""><option value="">Domínio Mira</option>{domains.map((domain) => <option key={domain.id} value={domain.id}>{domain.hostname}{domain.dns_status === "verified" ? " · verificado" : " · DNS pendente"}</option>)}</select></label>
                 <label><span>Campanha</span><select name="campaignId" defaultValue=""><option value="">Sem campanha</option>{campaigns.filter((campaign) => campaign.status !== "ended").map((campaign) => <option key={campaign.id} value={campaign.id}>{campaign.name}</option>)}</select></label>
                 <label><span>Canal</span><input name="channel" maxLength={50} placeholder="Instagram Stories" /></label>
                 <label><span>Tags</span><input name="tags" placeholder="lançamento, social" /></label>
@@ -378,7 +388,7 @@ export default function ProductApp({ user }: { user: { displayName: string; emai
             {collectionState === "error" ? <div className="links-empty error"><span>!</span><h3>Não foi possível atualizar a biblioteca.</h3><button className="button quiet" type="button" onClick={() => void fetchWorkspaceData(workspace.id, search, statusFilter, campaignFilter, tagFilter, favoritesFilter)}>Tentar novamente</button></div> : links.length === 0 ? <div className="links-empty"><span>{search || statusFilter !== "all" || campaignFilter || tagFilter || favoritesFilter ? "⌕" : "↗"}</span><h3>{search || statusFilter !== "all" || campaignFilter || tagFilter || favoritesFilter ? "Nenhum link corresponde aos filtros." : "Seu primeiro link começa aqui."}</h3><p>{search || statusFilter !== "all" || campaignFilter || tagFilter || favoritesFilter ? "Ajuste a busca ou os filtros." : "Preencha o formulário acima. Nenhum dado de demonstração está ocupando este espaço."}</p></div> : <div className={`links-table ${collectionState === "loading" ? "is-loading" : ""}`} role="table" aria-label="Links do Workspace" aria-busy={collectionState === "loading"}>
               <div className="links-table-head" role="row"><span>Link</span><span>Destino</span><span>Cliques</span><span>Ações</span></div>
               {links.map((item) => <div className="link-row" key={item.id} role="row">
-                <div><span className={`link-status ${item.status}`} aria-label={item.status === "active" ? "Ativo" : item.status === "archived" ? "Arquivado" : "Bloqueado"} /><strong>{item.title}</strong><small>/go/{item.slug} · {[item.campaign_name, item.channel, ...item.tags].filter(Boolean).join(" · ") || (item.status === "active" ? "ativo" : item.status === "archived" ? "arquivado" : "bloqueado")}</small></div>
+                <div><span className={`link-status ${item.status}`} aria-label={item.status === "active" ? "Ativo" : item.status === "archived" ? "Arquivado" : "Bloqueado"} /><strong>{item.title}</strong><small>{item.domain_hostname ? `${item.domain_hostname}/${item.slug}` : `/go/${item.slug}`} · {[item.campaign_name, item.channel, ...item.tags].filter(Boolean).join(" · ") || (item.status === "active" ? "ativo" : item.status === "archived" ? "arquivado" : "bloqueado")}</small></div>
                 <a href={item.destination_url} target="_blank" rel="noreferrer" title={item.destination_url}>{new URL(item.destination_url).hostname}</a>
                 <strong>{item.clicks.toLocaleString("pt-BR")}</strong>
                 <div className="link-actions">
@@ -402,7 +412,7 @@ export default function ProductApp({ user }: { user: { displayName: string; emai
             <label><span>Nome</span><input ref={editTitleRef} name="title" defaultValue={editing.title} maxLength={100} required /></label>
             <label><span>URL de destino</span><input name="destinationUrl" type="url" defaultValue={editing.destination_url} required /></label>
             <label><span>Slug</span><div className="slug-input"><small>/go/</small><input name="slug" defaultValue={editing.slug} maxLength={48} pattern="[A-Za-z0-9-]{3,48}" required /></div></label>
-            <div className="dialog-grid"><label><span>Campanha</span><select name="campaignId" defaultValue={editing.campaign_id ?? ""}><option value="">Sem campanha</option>{campaigns.map((campaign) => <option key={campaign.id} value={campaign.id}>{campaign.name}</option>)}</select></label><label><span>Canal</span><input name="channel" defaultValue={editing.channel ?? ""} maxLength={50} /></label></div>
+            <div className="dialog-grid"><label><span>Domínio</span><select name="domainId" defaultValue={editing.domain_id ?? ""}><option value="">Domínio Mira</option>{domains.map((domain) => <option key={domain.id} value={domain.id}>{domain.hostname}{domain.dns_status === "verified" ? " · verificado" : " · DNS pendente"}</option>)}</select></label><label><span>Campanha</span><select name="campaignId" defaultValue={editing.campaign_id ?? ""}><option value="">Sem campanha</option>{campaigns.map((campaign) => <option key={campaign.id} value={campaign.id}>{campaign.name}</option>)}</select></label><label><span>Canal</span><input name="channel" defaultValue={editing.channel ?? ""} maxLength={50} /></label></div>
             <label><span>Tags, separadas por vírgula</span><input name="tags" defaultValue={editing.tags.join(", ")} /></label>
             <details className="dialog-utm"><summary>Parâmetros UTM</summary><div className="dialog-grid">
               <label><span>Source</span><input name="utmSource" defaultValue={editing.utm_source ?? ""} /></label><label><span>Medium</span><input name="utmMedium" defaultValue={editing.utm_medium ?? ""} /></label>

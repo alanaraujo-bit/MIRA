@@ -39,6 +39,7 @@ export async function POST(request: Request) {
       title?: string;
       destinationUrl?: string;
       slug?: string;
+      domainId?: string | null;
       campaignId?: string | null;
       channel?: string | null;
       tags?: string[];
@@ -53,6 +54,7 @@ export async function POST(request: Request) {
       title: body.title,
       destinationUrl: body.destinationUrl,
       slug: body.slug,
+      domainId: body.domainId,
       campaignId: body.campaignId,
       channel: body.channel,
       tags: Array.isArray(body.tags) ? body.tags : [],

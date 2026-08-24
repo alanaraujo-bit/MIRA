@@ -16,6 +16,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       destinationUrl?: string;
       slug?: string;
       status?: "active" | "archived";
+      domainId?: string | null;
       campaignId?: string | null;
       channel?: string | null;
       tags?: string[];
@@ -35,6 +36,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       destinationUrl: body.destinationUrl,
       slug: body.slug,
       status: body.status,
+      domainId: body.domainId,
       campaignId: body.campaignId,
       channel: body.channel,
       tags: body.tags,

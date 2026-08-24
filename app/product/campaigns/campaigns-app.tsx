@@ -81,7 +81,7 @@ export default function CampaignsApp({ user }: { user: { displayName: string; em
     <aside className="product-sidebar">
       <Link className="brand" href="/" aria-label="Mira Roadmap"><span className="brand-mark" aria-hidden="true"><i /><i /></span><span>Mira</span></Link>
       <div className="workspace-switcher"><span>Workspace</span><strong>{workspace?.name ?? "Carregando…"}</strong><small>{workspace?.role ?? ""}</small></div>
-      <nav aria-label="Produto"><Link href="/product"><span aria-hidden="true">⌂</span>Visão geral</Link><Link href="/product#links"><span aria-hidden="true">↗</span>Links</Link><span aria-disabled="true"><span aria-hidden="true">◌</span>Analytics <small>em breve</small></span><Link className="selected" href="/product/campaigns"><span aria-hidden="true">◇</span>Campaigns</Link></nav>
+      <nav aria-label="Produto"><Link href="/product"><span aria-hidden="true">⌂</span>Visão geral</Link><Link href="/product#links"><span aria-hidden="true">↗</span>Links</Link><Link className="selected" href="/product/campaigns"><span aria-hidden="true">◇</span>Campaigns</Link><Link href="/product/domains"><span aria-hidden="true">◎</span>Domínios</Link><span aria-disabled="true"><span aria-hidden="true">◌</span>Analytics <small>em breve</small></span></nav>
       <Link className="roadmap-return" href="/">Roadmap Live <span>↗</span></Link>
     </aside>
     <main id="campaign-main" className="product-main">
