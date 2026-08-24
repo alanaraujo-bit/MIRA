@@ -5,13 +5,16 @@ type Phase = { id: string; code: string; title: string; intent: string; mileston
 const task = (title: string, detail: string, status: Status = "queued", evidence?: string, blocker?: string): Task => ({ title, detail, status, evidence, blocker });
 
 export const project = {
-  release: "0.3.0-alpha.2", environment: "Vercel + Railway · candidata em validação", commit: "m3-analytics · candidata",
+  release: "0.3.0-alpha.2", environment: "Vercel + Railway · público e operacional", commit: "main · 87cdf2e publicado",
   liveUrl: "https://mira-link-intelligence.vercel.app",
-  updatedIso: "2026-08-24T16:15:00-03:00", updatedLabel: "24 ago 2026 · 16:15 BRT",
+  updatedIso: "2026-08-24T16:19:00-03:00", updatedLabel: "24 ago 2026 · 16:19 BRT",
   currentFocus: "Milestone 3 · Analytics de decisão",
-  currentDetail: "Sessões observadas estão reconciliadas localmente com opt-out GPC/DNT e cobertura explícita; a candidata passa por publicação remota.",
-  currentGate: "deploy + smoke remoto + inspeção visual desktop/mobile",
+  currentDetail: "Sessões observadas estão ao vivo com hash por Workspace, cobertura explícita e opt-out GPC/DNT; visitantes únicos continuam deliberadamente indisponíveis.",
+  currentGate: "inspeção visual + consentimento e controles do titular",
   validations: [
+    { status: "done", title: "M3 alpha 2 publicado", detail: "Commit 87cdf2e recebeu estado Ready no Vercel e atualizou o alias público da Mira.", time: "24 ago" },
+    { status: "done", title: "Sessão privacy-safe remota", detail: "Domínio final reconciliou três cliques, uma sessão, 66,7% de cobertura e opt-out GPC/DNT.", time: "24 ago" },
+    { status: "done", title: "Pipeline alpha 2 aprovado", detail: "GitHub Actions executou migration-aware build, 12 testes e smoke PostgreSQL em 1m17s.", time: "24 ago" },
     { status: "done", title: "Sessão privacy-safe local", detail: "Três cliques produziram uma sessão, 66,7% de cobertura e 2 cliques por sessão; GPC/DNT removeu o cookie.", time: "24 ago" },
     { status: "done", title: "Migration de sessão", detail: "Coluna opcional e índice composto foram gerados, inspecionados e aplicados de forma idempotente no Railway.", time: "24 ago" },
     { status: "done", title: "M3 alpha 1 publicado", detail: "Commit 305a11b recebeu estado Ready no Vercel e assumiu o alias público da Mira.", time: "24 ago" },

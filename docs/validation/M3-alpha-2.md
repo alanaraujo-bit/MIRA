@@ -26,6 +26,13 @@ Visitantes únicos não serão inferidos silenciosamente por fingerprint. Sem co
 - Migration `0005_previous_thunderbolt_ross.sql` foi gerada e inspecionada.
 - Auditoria de dependências de produção: zero vulnerabilidades conhecidas.
 
+## Evidência publicada
+
+- Commit funcional `87cdf2e` publicado pelo `main` através da integração GitHub → Vercel.
+- Deployment `dpl_AccwMM4Rj4gMTBd1iGnWnRcf5jBr` recebeu estado `Ready` no alias `https://mira-link-intelligence.vercel.app`.
+- Smoke remoto confirmou novamente três cliques, uma sessão, 66,7% de cobertura e remoção por GPC/DNT.
+- GitHub Actions `32767318368`: lint, build, 12 testes e smoke PostgreSQL aprovados em 1m17s.
+
 ## Limitações mantidas no produto
 
 - Sessão não equivale a pessoa ou visitante único.
