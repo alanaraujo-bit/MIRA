@@ -25,4 +25,9 @@ Data: 2026-08-24
 - Um caso positivo de ownership depende de publicar o TXT em um domínio controlado externamente.
 - O ambiente Sites é owner-only; roteamento customizado e emissão SSL ainda não podem ser ativados com honestidade.
 - Browser controlável permanece indisponível, então a inspeção visual desktop/mobile continua aberta.
-- Publicação e inspeção da migration hospedada ainda são necessárias para este candidato.
+
+## Publicação
+
+- O commit funcional `93785c5` foi salvo como Sites versão 12 e publicado com sucesso no ambiente privado.
+- O deployment `appgdep_6a8c89a95be08191b2e3b0c95029e33c` terminou em `succeeded`.
+- O binding hospedado `DB` foi inspecionado após a publicação e expôs 11 tabelas, incluindo `domains`.

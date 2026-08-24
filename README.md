@@ -2,7 +2,7 @@
 
 Mira transforma links estáticos em infraestrutura programável. O repositório contém o Roadmap Live e um produto full-stack em evolução: identidade, Workspace, Links, Campaigns, organização por canal/tags/UTMs, QR integrado, redirect, evento de clique e resumo operacional baseados em dados reais.
 
-A release em construção `0.2.0-alpha.3` amplia o M2 com onboarding de domínio, verificação TXT real, estados de DNS/SSL e associação de Links à identidade de marca. M1 e M2 continuam ativos enquanto publicação desta versão, inspeção visual, ativação pública de redirects e execução remota do pipeline forem gates abertos; o Roadmap não os apresenta como concluídos.
+A release privada publicada `0.2.0-alpha.3` amplia o M2 com onboarding de domínio, verificação TXT real, estados de DNS/SSL e associação de Links à identidade de marca. M1 e M2 continuam ativos enquanto inspeção visual, ativação pública de redirects, um ownership positivo em DNS controlado e execução remota do pipeline forem gates abertos; o Roadmap não os apresenta como concluídos.
 
 ## Development
 
