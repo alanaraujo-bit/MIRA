@@ -10,6 +10,8 @@ Data: 24 de agosto de 2026.
 - Criação de Link com destino HTTPS público.
 - Acesso ao slug, resposta 302 e persistência de click event.
 - Consulta posterior do resumo do Workspace, confirmando um link ativo, um clique e device class `mobile`.
+- Versão 3 publicada no ambiente privado com o commit `5d6a2c7`.
+- Binding D1 hospedado inspecionado após o deploy, confirmando as cinco tabelas da migration.
 
 ## Controles negativos
 
@@ -24,7 +26,7 @@ O primeiro bootstrap falhou com `no such table: users`. A migration estava gerad
 ## Gates abertos
 
 - inspeção visual desktop/mobile por navegador controlável;
-- publicação do alpha e validação do D1 hospedado;
+- execução do fluxo autenticado contra o D1 hospedado;
 - acesso público ao redirect;
 - edição, arquivamento e busca;
 - ingestão assíncrona e idempotente.

@@ -10,7 +10,7 @@ export const project = {
   updatedIso: "2026-08-24T13:31:00-03:00", updatedLabel: "24 ago 2026 · 13:31 BRT",
   currentFocus: "Milestone 1 · Primeiro link real",
   currentDetail: "Persistência D1, identidade, isolamento de Workspace, criação de Link, redirect e clique real.",
-  currentGate: "produção + inspeção visual",
+  currentGate: "fluxo hospedado + inspeção visual",
   validations: [
     { status: "done", title: "Pesquisa inicial da marca", detail: "Triagem pública de categoria concluída; clearance jurídico segue pendente.", time: "24 ago" },
     { status: "done", title: "Servidor de preview", detail: "Base oficial de publicação inicializada e servindo localmente.", time: "24 ago" },
@@ -19,6 +19,8 @@ export const project = {
     { status: "done", title: "Migration D1 inspecionada", detail: "Cinco tabelas, chaves estrangeiras e índices gerados; inicialização local idempotente corrigida após falha real.", time: "24 ago" },
     { status: "done", title: "Fluxo M1 local", detail: "Workspace → Link → 302 → click event → analytics executado com persistência real; 5/5 testes automatizados passaram.", time: "24 ago" },
     { status: "done", title: "Controles negativos", detail: "Acesso cruzado 403, destino privado 400 e slug inexistente 404 validados.", time: "24 ago" },
+    { status: "done", title: "M1 alpha publicado", detail: "Versão 3 publicada com sucesso no ambiente privado, ligada ao commit 5d6a2c7.", time: "24 ago" },
+    { status: "done", title: "D1 hospedado verificado", detail: "Binding DB ativo com users, workspaces, workspace_members, links e click_events após deploy.", time: "24 ago" },
   ],
   issues: [
     { severity: "medium", code: "P1", title: "Redirect público ainda indisponível", detail: "O preview atual é owner-only; links distribuíveis exigem uma superfície pública separada e seu gate de acesso." },
@@ -47,7 +49,7 @@ export const phases: Phase[] = [
   ]},
   { id: "core", code: "Fase 1", title: "Núcleo utilizável", intent: "Entregar conta, Workspace, link, redirect e evento confiável em um fluxo real.", milestones: [
     { id: "m1", code: "M1", release: "Release 0.1.0", title: "Primeiro link real", outcome: "Um usuário cria conta, publica um link e acompanha cliques reais.", exitCriteria: "Fluxo publicado e testado: cadastro → Workspace → criar → redirecionar → registrar evento → visualizar resultado.", tasks: [
-      task("Fundação full-stack e ambientes", "Aplicação, banco, migrations, configuração segura, preview e CI.", "active", "Build e D1 local aprovados; publicação alpha e pipeline CI ainda pendentes."),
+      task("Fundação full-stack e ambientes", "Aplicação, banco, migrations, configuração segura, preview e CI.", "active", "Build, publicação alpha e schema D1 hospedado aprovados; pipeline CI ainda pendente."),
       task("Autenticação e sessões", "Cadastro, login, confirmação, recuperação, sessões seguras e estados de erro.", "active", "SIWC server-side integrado; jornada real em produção e modelo público ainda precisam de validação."),
       task("Workspace e autorização", "Isolamento multi-tenant, ownership e verificação de acesso em todas as operações.", "active", "Membership persistente e tentativa cross-Workspace bloqueada com 403; cobertura será ampliada."),
       task("CRUD de Links", "Criar, editar, arquivar, buscar e copiar links com validação de destino e slug.", "active", "Create/list/copy reais; edição, arquivo e busca permanecem pendentes."),
