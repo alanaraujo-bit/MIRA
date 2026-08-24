@@ -22,7 +22,8 @@ test("server-renders the Mira Roadmap Live", async () => {
   assert.match(html, /Infraestrutura programável para cada link\./);
   assert.match(html, /Roadmap Live/);
   assert.match(html, /Abrir produto/);
-  assert.match(html, /Milestone 1/);
+  assert.match(html, /Milestone 2/);
+  assert.match(html, /Campaigns, canais, tags, UTMs e QR/);
   assert.match(html, /Critério de saída/);
   assert.match(html, /Abrir release/);
   assert.match(html, /mira-link-intelligence\.alanvitoraraujo1a\.chatgpt\.site/);
@@ -30,9 +31,10 @@ test("server-renders the Mira Roadmap Live", async () => {
 });
 
 test("ships product metadata, PWA files and truthful status language", async () => {
-  const [page, product, repository, dataPlane, worker, patchRoute, responseHelpers, iconRoute, offlinePage, migration, layout, data, manifest, serviceWorker, social] = await Promise.all([
+  const [page, product, campaigns, repository, dataPlane, worker, patchRoute, responseHelpers, iconRoute, offlinePage, migration, m2Migration, layout, data, manifest, serviceWorker, social] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/product/product-app.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/product/campaigns/campaigns-app.tsx", import.meta.url), "utf8"),
     readFile(new URL("../db/repository.ts", import.meta.url), "utf8"),
     readFile(new URL("../db/data-plane.ts", import.meta.url), "utf8"),
     readFile(new URL("../worker/index.ts", import.meta.url), "utf8"),
@@ -41,6 +43,7 @@ test("ships product metadata, PWA files and truthful status language", async () 
     readFile(new URL("../app/api/icon/route.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/offline/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../drizzle/0000_gorgeous_shen.sql", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0001_tan_prowler.sql", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/roadmap-data.ts", import.meta.url), "utf8"),
     readFile(new URL("../public/manifest.webmanifest", import.meta.url), "utf8"),
@@ -55,6 +58,9 @@ test("ships product metadata, PWA files and truthful status language", async () 
   assert.match(product, /\/api\/bootstrap/);
   assert.match(product, /Buscar por nome, slug ou destino/);
   assert.match(product, /Arquivar/);
+  assert.match(product, /Organização e UTMs/);
+  assert.match(product, /\/qr\?download=1/);
+  assert.match(campaigns, /Uma campanha\. Todos os canais\./);
   assert.match(repository, /WORKSPACE_FORBIDDEN/);
   assert.match(repository, /LINK_CONFLICT/);
   assert.match(dataPlane, /INSERT OR IGNORE INTO click_events/);
@@ -68,6 +74,8 @@ test("ships product metadata, PWA files and truthful status language", async () 
   assert.match(offlinePage, /Seus links continuam no ar/);
   assert.match(migration, /CREATE TABLE `workspace_members`/);
   assert.match(migration, /CREATE UNIQUE INDEX `idx_links_slug`/);
+  assert.match(m2Migration, /CREATE TABLE `campaigns`/);
+  assert.match(m2Migration, /CREATE TABLE `tags`/);
   assert.match(layout, /openGraph/);
   assert.match(layout, /summary_large_image/);
   assert.match(data, /Inspeção visual indisponível/);

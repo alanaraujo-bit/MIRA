@@ -16,6 +16,10 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       destinationUrl?: string;
       slug?: string;
       status?: "active" | "archived";
+      campaignId?: string | null;
+      channel?: string | null;
+      tags?: string[];
+      utm?: { source?: string; medium?: string; campaign?: string; content?: string; term?: string };
       expectedUpdatedAt?: number;
     };
     if (body.status && !new Set(["active", "archived"]).has(body.status)) {
@@ -31,6 +35,10 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       destinationUrl: body.destinationUrl,
       slug: body.slug,
       status: body.status,
+      campaignId: body.campaignId,
+      channel: body.channel,
+      tags: body.tags,
+      utm: body.utm,
       expectedUpdatedAt: body.expectedUpdatedAt!,
     });
     return Response.json({ link });

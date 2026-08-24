@@ -13,6 +13,38 @@ export function normalizeSlug(value: string): string {
   return safeStem(value, `link-${crypto.randomUUID().slice(0, 6)}`);
 }
 
+export function normalizeTag(value: string): { name: string; normalizedName: string } | null {
+  const name = value.trim().replace(/\s+/g, " ").slice(0, 32);
+  if (!name) return null;
+  return { name, normalizedName: safeStem(name, "tag") };
+}
+
+export type UtmFields = {
+  source?: string | null;
+  medium?: string | null;
+  campaign?: string | null;
+  content?: string | null;
+  term?: string | null;
+};
+
+export function applyUtmParameters(destination: string, fields: UtmFields): string {
+  const validated = validateDestination(destination);
+  const url = new URL(validated);
+  const values = {
+    utm_source: fields.source,
+    utm_medium: fields.medium,
+    utm_campaign: fields.campaign,
+    utm_content: fields.content,
+    utm_term: fields.term,
+  };
+  for (const [key, raw] of Object.entries(values)) {
+    const value = raw?.trim().slice(0, 100);
+    if (value) url.searchParams.set(key, value);
+    else url.searchParams.delete(key);
+  }
+  return url.toString();
+}
+
 function isUnsafeHostname(hostname: string): boolean {
   const host = hostname.toLowerCase().replace(/\.$/, "");
   if (host === "localhost" || host.endsWith(".localhost") || host.endsWith(".local")) return true;

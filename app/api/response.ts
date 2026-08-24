@@ -29,5 +29,7 @@ export function errorResponse(error: unknown) {
   if (message === "WORKSPACE_READ_ONLY") return apiError("Seu papel neste Workspace não permite alterações.", 403);
   if (message === "LINK_NOT_FOUND") return apiError("Link não encontrado.", 404);
   if (message === "LINK_CONFLICT") return apiError("Este link foi alterado em outra sessão. Atualize os dados e tente novamente.", 409);
+  if (message === "CAMPAIGN_NOT_FOUND") return apiError("Campanha não encontrada.", 404);
+  if (message === "CAMPAIGN_CONFLICT") return apiError("Esta campanha foi alterada em outra sessão. Atualize os dados e tente novamente.", 409);
   return apiError(message, 400);
 }

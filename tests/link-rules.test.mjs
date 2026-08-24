@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { classifyDevice, normalizeSlug, referrerHost, validateDestination } from "../lib/link-rules.ts";
+import { applyUtmParameters, classifyDevice, normalizeSlug, normalizeTag, referrerHost, validateDestination } from "../lib/link-rules.ts";
 
 test("normaliza slugs sem perder legibilidade", () => {
   assert.equal(normalizeSlug("  Lançamento São Paulo 2026! "), "lancamento-sao-paulo-2026");
@@ -20,4 +20,17 @@ test("minimiza user agent e referrer em classificações úteis", () => {
   assert.equal(classifyDevice(null), "unknown");
   assert.equal(referrerHost("https://instagram.com/story/42"), "instagram.com");
   assert.equal(referrerHost("not a url"), null);
+});
+
+test("normaliza tags e aplica UTMs sem apagar outros parâmetros", () => {
+  assert.deepEqual(normalizeTag("  Mídia   Paga  "), { name: "Mídia Paga", normalizedName: "midia-paga" });
+  assert.equal(normalizeTag("   "), null);
+  const result = new URL(applyUtmParameters("https://example.com/oferta?coupon=42&utm_term=antigo", {
+    source: "instagram", medium: "social", campaign: "black-friday", term: "",
+  }));
+  assert.equal(result.searchParams.get("coupon"), "42");
+  assert.equal(result.searchParams.get("utm_source"), "instagram");
+  assert.equal(result.searchParams.get("utm_medium"), "social");
+  assert.equal(result.searchParams.get("utm_campaign"), "black-friday");
+  assert.equal(result.searchParams.has("utm_term"), false);
 });

@@ -18,6 +18,8 @@ export async function GET(request: Request) {
       links: await listLinks(user.userId, workspaceId, {
         query,
         status: requestedStatus as "all" | "active" | "archived",
+        campaignId: searchParams.get("campaignId") ?? "",
+        tag: searchParams.get("tag") ?? "",
       }),
     });
   } catch (error) {
@@ -36,6 +38,10 @@ export async function POST(request: Request) {
       title?: string;
       destinationUrl?: string;
       slug?: string;
+      campaignId?: string | null;
+      channel?: string | null;
+      tags?: string[];
+      utm?: { source?: string; medium?: string; campaign?: string; content?: string; term?: string };
     };
     if (!body.workspaceId || !body.title || !body.destinationUrl) {
       return apiError("Workspace, nome e destino são obrigatórios.");
@@ -46,6 +52,10 @@ export async function POST(request: Request) {
       title: body.title,
       destinationUrl: body.destinationUrl,
       slug: body.slug,
+      campaignId: body.campaignId,
+      channel: body.channel,
+      tags: Array.isArray(body.tags) ? body.tags : [],
+      utm: body.utm,
     });
     return Response.json({ link }, { status: 201 });
   } catch (error) {

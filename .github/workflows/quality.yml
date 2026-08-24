@@ -40,3 +40,4 @@ jobs:
             exit 1
           fi
           npm run test:smoke
+          npm run test:smoke:m2

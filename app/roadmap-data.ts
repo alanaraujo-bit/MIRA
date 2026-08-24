@@ -5,12 +5,12 @@ type Phase = { id: string; code: string; title: string; intent: string; mileston
 const task = (title: string, detail: string, status: Status = "queued", evidence?: string, blocker?: string): Task => ({ title, detail, status, evidence, blocker });
 
 export const project = {
-  release: "0.1.0-alpha.2", environment: "Sites · privado", commit: "main · M1 alpha 2",
+  release: "0.2.0-alpha.1", environment: "Sites · publicação pendente", commit: "main · candidato M2 alpha 1",
   liveUrl: "https://mira-link-intelligence.alanvitoraraujo1a.chatgpt.site",
-  updatedIso: "2026-08-24T14:11:00-03:00", updatedLabel: "24 ago 2026 · 14:11 BRT",
-  currentFocus: "Milestone 1 · Primeiro link real",
-  currentDetail: "CRUD seguro de Links, busca persistente, redirect assíncrono, PWA privada e contratos de produção.",
-  currentGate: "fluxo hospedado + inspeção visual",
+  updatedIso: "2026-08-24T14:31:00-03:00", updatedLabel: "24 ago 2026 · 14:31 BRT",
+  currentFocus: "Milestone 2 · Organização profissional",
+  currentDetail: "Campaigns, canais, tags, UTMs e QR rastreável integrados a Links persistentes; preparando publicação.",
+  currentGate: "publicação privada + inspeção visual",
   validations: [
     { status: "done", title: "Pesquisa inicial da marca", detail: "Triagem pública de categoria concluída; clearance jurídico segue pendente.", time: "24 ago" },
     { status: "done", title: "Servidor de preview", detail: "Base oficial de publicação inicializada e servindo localmente.", time: "24 ago" },
@@ -25,7 +25,9 @@ export const project = {
     { status: "done", title: "Redirect fora do caminho de ingestão", detail: "302 inclui request ID e timing; click é persistido via waitUntil com INSERT OR IGNORE.", time: "24 ago" },
     { status: "done", title: "Proteções de write", detail: "Cross-site 403, content type inválido 415, acesso cruzado 403/404 e destino privado 400.", time: "24 ago" },
     { status: "done", title: "PWA sem cache sensível", detail: "Instalação abre o produto; API, produto autenticado e redirects usam network-only com fallback offline seguro.", time: "24 ago" },
-    { status: "done", title: "M1 alpha 2 publicado", detail: "Versão 5 publicada com sucesso; artefato ligado ao commit eb51669 e binding D1 preservado.", time: "24 ago" },
+    { status: "done", title: "M1 alpha 2 publicado", detail: "Versão 6 publicada com sucesso; artefato final ligado ao commit e5c0174 e binding D1 preservado.", time: "24 ago" },
+    { status: "done", title: "Fluxo M2 local", detail: "Campaign → Link com canal/tags/UTMs → filtro → QR SVG → redirect executado em D1; controles 409/404 aprovados.", time: "24 ago" },
+    { status: "done", title: "Dependência QR auditada", detail: "Auditoria das dependências de produção retornou 0 vulnerabilidades conhecidas; build, lint e 6/6 testes passaram.", time: "24 ago" },
   ],
   issues: [
     { severity: "medium", code: "P1", title: "Redirect público ainda indisponível", detail: "O preview atual é owner-only; links distribuíveis exigem uma superfície pública separada e seu gate de acesso." },
@@ -65,11 +67,11 @@ export const phases: Phase[] = [
       task("Dashboard de primeiro valor", "Tráfego real, links recentes, atenção e próximos passos.", "active", "Busca, filtros, edição, estados, PWA e offline publicados; inspeção visual permanece bloqueada."),
     ] },
     { id: "m2", code: "M2", release: "Release 0.2.0", title: "Organização profissional", outcome: "Links operam em campanhas, tags, domínios e sistemas de busca eficientes.", exitCriteria: "Busca, filtros, campanhas e domínio base funcionam com dados reais e conjuntos grandes paginados.", tasks: [
-      task("Campaigns de primeira classe", "Criação, canais, links associados e visão consolidada inicial."),
-      task("Busca e filtros", "Busca global, filtros compostos, tags, favoritos e estados persistidos."),
+      task("Campaigns de primeira classe", "Criação, canais, links associados e visão consolidada inicial.", "active", "CRUD inicial, métricas e vínculo com Links passaram no smoke local; falta publicação e inspeção visual."),
+      task("Busca e filtros", "Busca global, filtros compostos, tags, favoritos e estados persistidos.", "active", "Busca/status anteriores agora combinam campanha e tag; paginação, favoritos e gate visual continuam pendentes."),
       task("Domínios customizados", "Onboarding DNS, verificação, SSL, saúde e mensagens acionáveis."),
-      task("UTM management", "Templates, convenções, validação e prevenção de inconsistências."),
-      task("QR integrado", "Geração, personalização, exportação e atribuição ao mesmo Link e Campaign."),
+      task("UTM management", "Templates, convenções, validação e prevenção de inconsistências.", "active", "Cinco parâmetros são aplicados sem apagar query existente e persistem no Link; templates e convenções virão no próximo corte."),
+      task("QR integrado", "Geração, personalização, exportação e atribuição ao mesmo Link e Campaign.", "active", "SVG de alta correção é exportado do endereço rastreável com autorização de Workspace; personalização avançada e gate visual seguem abertos."),
     ] },
   ]},
   { id: "intelligence", code: "Fase 2", title: "Inteligência de tráfego", intent: "Transformar eventos confiáveis em entendimento, comparação e ação.", milestones: [
