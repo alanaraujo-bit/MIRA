@@ -20,6 +20,13 @@ Data: 24 de agosto de 2026
 - Período inválido retornou 400; relatório de outro Workspace retornou 403; Inspector externo retornou 404.
 - Dependências de produção: zero vulnerabilidades conhecidas na auditoria executada.
 
+## Evidência publicada
+
+- Commit funcional `305a11b` publicado pelo `main` através da integração GitHub → Vercel.
+- Deployment `dpl_6APCCZSkToYEdaJfsN3FrXyinSoz` recebeu estado `Ready` e atualizou `https://mira-link-intelligence.vercel.app`.
+- Smoke remoto repetiu toda a jornada no domínio final e confirmou Analytics e Link Inspector contra o PostgreSQL Railway.
+- GitHub Actions `32765722803`: lint, build, 10 testes e smoke persistente aprovados em 1m08s.
+
 ## Falhas encontradas e correções
 
 - O primeiro smoke da sessão recebeu 400 no cadastro porque o limite anterior agrupava toda a rede em uma única chave. O limite foi separado por conta + rede, mantendo proteção contra abuso sem bloquear usuários distintos atrás do mesmo IP.

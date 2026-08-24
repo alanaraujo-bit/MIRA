@@ -5,13 +5,16 @@ type Phase = { id: string; code: string; title: string; intent: string; mileston
 const task = (title: string, detail: string, status: Status = "queued", evidence?: string, blocker?: string): Task => ({ title, detail, status, evidence, blocker });
 
 export const project = {
-  release: "0.3.0-alpha.1", environment: "Vercel + Railway · candidata em validação", commit: "m3-analytics · candidata",
+  release: "0.3.0-alpha.1", environment: "Vercel + Railway · público e operacional", commit: "main · 305a11b publicado",
   liveUrl: "https://mira-link-intelligence.vercel.app",
-  updatedIso: "2026-08-24T16:06:00-03:00", updatedLabel: "24 ago 2026 · 16:06 BRT",
+  updatedIso: "2026-08-24T16:03:00-03:00", updatedLabel: "24 ago 2026 · 16:03 BRT",
   currentFocus: "Milestone 3 · Analytics de decisão",
-  currentDetail: "Relatório comparativo e Link Inspector funcionam contra eventos reais; a candidata passa agora por publicação e validação remota.",
-  currentGate: "deploy + smoke remoto + inspeção visual desktop/mobile",
+  currentDetail: "Analytics comparativo e Link Inspector estão ao vivo e reconciliados com eventos reais; o próximo gate do M3 é profundidade de audiência e inspeção visual.",
+  currentGate: "inspeção visual desktop/mobile + visitantes e sessões",
   validations: [
+    { status: "done", title: "M3 alpha 1 publicado", detail: "Commit 305a11b recebeu estado Ready no Vercel e assumiu o alias público da Mira.", time: "24 ago" },
+    { status: "done", title: "Analytics remoto reconciliado", detail: "Smoke público confirmou relatório, Inspector, Instagram, Mobile, 302, click persistido e isolamento no domínio final.", time: "24 ago" },
+    { status: "done", title: "Pipeline M3 aprovado", detail: "GitHub Actions executou lint, build, 10 testes e smoke com PostgreSQL em 1m08s.", time: "24 ago" },
     { status: "done", title: "Analytics reconciliado localmente", detail: "Evento real apareceu em série, origem, dispositivo, Link, Campaign e Inspector com a mesma contagem.", time: "24 ago" },
     { status: "done", title: "Controles analíticos", detail: "Período inválido 400, relatório cross-Workspace 403 e Link externo 404 foram confirmados contra o Railway.", time: "24 ago" },
     { status: "done", title: "Deploy Git em produção", detail: "Push do commit 42b3e2b no main acionou o Vercel e recebeu estado Ready no alias público definitivo.", time: "24 ago" },
