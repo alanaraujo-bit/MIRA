@@ -6,14 +6,15 @@ if (!new Set(["dev", "build", "start"]).has(command)) {
   process.exit(1);
 }
 
-const executable = process.platform === "win32"
-  ? "node_modules\\.bin\\vinext.cmd"
-  : "node_modules/.bin/vinext";
+const isWindows = process.platform === "win32";
+const executable = isWindows ? "node_modules\\.bin\\vinext.cmd" : "node_modules/.bin/vinext";
+const launcher = isWindows ? (process.env.ComSpec || "cmd.exe") : executable;
+const args = isWindows ? ["/d", "/s", "/c", executable, command] : [command];
 
-const child = spawn(executable, [command], {
+const child = spawn(launcher, args, {
   stdio: "inherit",
   env: { ...process.env, WRANGLER_LOG_PATH: ".wrangler/wrangler.log" },
-  shell: process.platform === "win32",
+  shell: false,
 });
 
 for (const signal of ["SIGINT", "SIGTERM"]) {

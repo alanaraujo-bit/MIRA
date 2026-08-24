@@ -5,19 +5,23 @@ type Phase = { id: string; code: string; title: string; intent: string; mileston
 const task = (title: string, detail: string, status: Status = "queued", evidence?: string, blocker?: string): Task => ({ title, detail, status, evidence, blocker });
 
 export const project = {
-  release: "0.0.1", environment: "Sites · privado", commit: "main · v0.0.1",
+  release: "0.1.0-alpha.1", environment: "Sites · privado", commit: "main · M1 alpha",
   liveUrl: "https://mira-link-intelligence.alanvitoraraujo1a.chatgpt.site",
-  updatedIso: "2026-08-24T12:34:00-03:00", updatedLabel: "24 ago 2026 · 12:34 BRT",
-  currentFocus: "Milestone 0 · Fundação observável",
-  currentDetail: "Roadmap Live, identidade da Mira, decisões técnicas e primeira publicação.",
-  currentGate: "inspeção visual",
+  updatedIso: "2026-08-24T13:31:00-03:00", updatedLabel: "24 ago 2026 · 13:31 BRT",
+  currentFocus: "Milestone 1 · Primeiro link real",
+  currentDetail: "Persistência D1, identidade, isolamento de Workspace, criação de Link, redirect e clique real.",
+  currentGate: "produção + inspeção visual",
   validations: [
     { status: "done", title: "Pesquisa inicial da marca", detail: "Triagem pública de categoria concluída; clearance jurídico segue pendente.", time: "24 ago" },
     { status: "done", title: "Servidor de preview", detail: "Base oficial de publicação inicializada e servindo localmente.", time: "24 ago" },
     { status: "done", title: "Build e testes", detail: "Build de produção aprovado; 2/2 contratos de render, metadata e PWA passaram após correção.", time: "24 ago" },
     { status: "done", title: "Publicação privada", detail: "Deployment concluído com sucesso e URL da release vinculada ao Roadmap.", time: "24 ago" },
+    { status: "done", title: "Migration D1 inspecionada", detail: "Cinco tabelas, chaves estrangeiras e índices gerados; inicialização local idempotente corrigida após falha real.", time: "24 ago" },
+    { status: "done", title: "Fluxo M1 local", detail: "Workspace → Link → 302 → click event → analytics executado com persistência real; 5/5 testes automatizados passaram.", time: "24 ago" },
+    { status: "done", title: "Controles negativos", detail: "Acesso cruzado 403, destino privado 400 e slug inexistente 404 validados.", time: "24 ago" },
   ],
   issues: [
+    { severity: "medium", code: "P1", title: "Redirect público ainda indisponível", detail: "O preview atual é owner-only; links distribuíveis exigem uma superfície pública separada e seu gate de acesso." },
     { severity: "medium", code: "P2", title: "Inspeção visual indisponível", detail: "Nenhum navegador controlável está disponível nesta sessão; o gate visual permanece aberto." },
     { severity: "low", code: "P3", title: "Clearance jurídico da marca", detail: "Busca formal de marca e domínio definitivo será necessária antes do lançamento comercial." },
   ],
@@ -26,6 +30,7 @@ export const project = {
     { id: "002", title: "Separar plano de controle e plano de dados", summary: "Gestão evolui independentemente do caminho crítico de redirect e ingestão de eventos.", status: "Aceita" },
     { id: "003", title: "Privacidade por minimização", summary: "Coleta necessária, precisão comunicada honestamente, retenção por plano e controles por Workspace.", status: "Aceita" },
     { id: "004", title: "Progresso deriva de evidência", summary: "Tarefas parciais não contam; milestones fecham com execução, teste, inspeção e publicação.", status: "Aceita" },
+    { id: "005", title: "Identidade do preview vem da plataforma", summary: "SIWC identifica o usuário; autorização de Workspace continua explícita e server-side. Autenticação pública será confirmada antes do lançamento aberto.", status: "Aceita" },
   ],
 };
 
@@ -35,20 +40,20 @@ export const phases: Phase[] = [
       task("Definir marca e posicionamento", "Mira estabelecida como plataforma de Link Intelligence e infraestrutura programável.", "done", "Triagem pública inicial e decisão registradas em BRAND.md."),
       task("Estabelecer princípios de produto", "Simplicidade progressiva, confiança, privacidade, performance e qualidade definidos.", "done", "Princípios ligados aos critérios de Done."),
       task("Desenhar arquitetura de referência", "Limites entre control plane, redirect edge, eventos, analytics e operações.", "done", "ADR-001 documentada; implementação será provada nos próximos milestones."),
-      task("Construir Roadmap Live", "Interface responsiva com fases, tarefas, filtros, evidência, decisões e estados reais.", "active", "Preview local ativo; build, publicação e inspeção final pendentes."),
+      task("Construir Roadmap Live", "Interface responsiva com fases, tarefas, filtros, evidência, decisões e estados reais.", "done", "Build, testes e duas versões privadas publicadas; inspeção visual permanece em tarefa separada."),
       task("Publicar release 0.0.1", "Disponibilizar URL e conectar release, ambiente e origem.", "done", "Fonte validada vinculada à release 0.0.1 no Sites; publicação privada executada neste gate."),
       task("Validar desktop, mobile e PWA", "Inspecionar layout, contraste, teclado, filtros e instalação.", "blocked", undefined, "Navegador controlável indisponível na sessão atual."),
     ] },
   ]},
   { id: "core", code: "Fase 1", title: "Núcleo utilizável", intent: "Entregar conta, Workspace, link, redirect e evento confiável em um fluxo real.", milestones: [
     { id: "m1", code: "M1", release: "Release 0.1.0", title: "Primeiro link real", outcome: "Um usuário cria conta, publica um link e acompanha cliques reais.", exitCriteria: "Fluxo publicado e testado: cadastro → Workspace → criar → redirecionar → registrar evento → visualizar resultado.", tasks: [
-      task("Fundação full-stack e ambientes", "Aplicação, banco, migrations, configuração segura, preview e CI."),
-      task("Autenticação e sessões", "Cadastro, login, confirmação, recuperação, sessões seguras e estados de erro."),
-      task("Workspace e autorização", "Isolamento multi-tenant, ownership e verificação de acesso em todas as operações."),
-      task("CRUD de Links", "Criar, editar, arquivar, buscar e copiar links com validação de destino e slug."),
-      task("Redirect crítico", "Resolução de domínio/slug, cache, fallback seguro e baixa latência observável."),
-      task("Ingestão de click", "Registro assíncrono idempotente com minimização e classificação inicial."),
-      task("Dashboard de primeiro valor", "Tráfego real, links recentes, atenção e próximos passos."),
+      task("Fundação full-stack e ambientes", "Aplicação, banco, migrations, configuração segura, preview e CI.", "active", "Build e D1 local aprovados; publicação alpha e pipeline CI ainda pendentes."),
+      task("Autenticação e sessões", "Cadastro, login, confirmação, recuperação, sessões seguras e estados de erro.", "active", "SIWC server-side integrado; jornada real em produção e modelo público ainda precisam de validação."),
+      task("Workspace e autorização", "Isolamento multi-tenant, ownership e verificação de acesso em todas as operações.", "active", "Membership persistente e tentativa cross-Workspace bloqueada com 403; cobertura será ampliada."),
+      task("CRUD de Links", "Criar, editar, arquivar, buscar e copiar links com validação de destino e slug.", "active", "Create/list/copy reais; edição, arquivo e busca permanecem pendentes."),
+      task("Redirect crítico", "Resolução de domínio/slug, cache, fallback seguro e baixa latência observável.", "active", "302 e 404 validados localmente; superfície pública, cache e observabilidade ainda pendentes."),
+      task("Ingestão de click", "Registro assíncrono idempotente com minimização e classificação inicial.", "active", "Evento real persistido sem IP bruto; desacoplamento e idempotência ainda pendentes."),
+      task("Dashboard de primeiro valor", "Tráfego real, links recentes, atenção e próximos passos.", "active", "Shell conectado a dados reais com loading, empty e error; inspeção visual ainda pendente."),
     ] },
     { id: "m2", code: "M2", release: "Release 0.2.0", title: "Organização profissional", outcome: "Links operam em campanhas, tags, domínios e sistemas de busca eficientes.", exitCriteria: "Busca, filtros, campanhas e domínio base funcionam com dados reais e conjuntos grandes paginados.", tasks: [
       task("Campaigns de primeira classe", "Criação, canais, links associados e visão consolidada inicial."),

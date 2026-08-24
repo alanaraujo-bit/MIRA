@@ -12,10 +12,13 @@ export default function Home() {
   const [expanded, setExpanded] = useState(() => new Set(["m0", "m1"]));
 
   useEffect(() => {
-    const next = window.localStorage.getItem("mira-theme") === "dark" ? "dark" : "light";
-    setTheme(next);
-    document.documentElement.dataset.theme = next;
+    const themeTimer = window.setTimeout(() => {
+      const next = window.localStorage.getItem("mira-theme") === "dark" ? "dark" : "light";
+      setTheme(next);
+      document.documentElement.dataset.theme = next;
+    }, 0);
     if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => undefined);
+    return () => window.clearTimeout(themeTimer);
   }, []);
 
   const tasks = useMemo(() => phases.flatMap((phase) => phase.milestones.flatMap((milestone) => milestone.tasks)), []);
@@ -36,7 +39,8 @@ export default function Home() {
   function toggleMilestone(id: string) {
     setExpanded((current) => {
       const next = new Set(current);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   }
@@ -60,7 +64,7 @@ export default function Home() {
             <div className="overline"><span>Roadmap Live</span><time dateTime={project.updatedIso}>Atualizado {project.updatedLabel}</time></div>
             <h1>Infraestrutura programável para cada link.</h1>
             <p className="lede">A Mira transforma links distribuídos em uma camada controlável de roteamento, atribuição e inteligência. Este painel mostra o trabalho real — inclusive o que ainda não existe.</p>
-            <div className="hero-actions"><a className="button primary" href="#roadmap">Ver execução <span aria-hidden="true">→</span></a><span className="button disabled" aria-disabled="true" title="A aplicação do cliente será habilitada no Milestone 1">Aplicação em construção</span></div>
+            <div className="hero-actions"><a className="button primary" href="#roadmap">Ver execução <span aria-hidden="true">→</span></a><a className="button quiet" href="/product">Abrir produto <span aria-hidden="true">↗</span></a></div>
           </div>
           <aside className="signal-panel" aria-label="Resumo operacional">
             <div className="signal-top"><span>Estado operacional</span><strong><i /> Fundação ativa</strong></div>

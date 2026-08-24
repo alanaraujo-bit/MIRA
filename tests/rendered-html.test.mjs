@@ -21,8 +21,8 @@ test("server-renders the Mira Roadmap Live", async () => {
   assert.match(html, /<title>Mira — Roadmap Live<\/title>/i);
   assert.match(html, /Infraestrutura programável para cada link\./);
   assert.match(html, /Roadmap Live/);
-  assert.match(html, /Aplicação em construção/);
-  assert.match(html, /Milestone 0/);
+  assert.match(html, /Abrir produto/);
+  assert.match(html, /Milestone 1/);
   assert.match(html, /Critério de saída/);
   assert.match(html, /Abrir release/);
   assert.match(html, /mira-link-intelligence\.alanvitoraraujo1a\.chatgpt\.site/);
@@ -30,8 +30,11 @@ test("server-renders the Mira Roadmap Live", async () => {
 });
 
 test("ships product metadata, PWA files and truthful status language", async () => {
-  const [page, layout, data, manifest, serviceWorker, social] = await Promise.all([
+  const [page, product, repository, migration, layout, data, manifest, serviceWorker, social] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/product/product-app.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../db/repository.ts", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0000_gorgeous_shen.sql", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/roadmap-data.ts", import.meta.url), "utf8"),
     readFile(new URL("../public/manifest.webmanifest", import.meta.url), "utf8"),
@@ -42,6 +45,12 @@ test("ships product metadata, PWA files and truthful status language", async () 
   assert.match(page, /role="progressbar"/);
   assert.match(page, /aria-label="Filtrar por status"/);
   assert.match(page, /serviceWorker/);
+  assert.match(product, /Nenhum dado de demonstração/);
+  assert.match(product, /\/api\/bootstrap/);
+  assert.match(repository, /WORKSPACE_FORBIDDEN/);
+  assert.match(repository, /INSERT INTO click_events/);
+  assert.match(migration, /CREATE TABLE `workspace_members`/);
+  assert.match(migration, /CREATE UNIQUE INDEX `idx_links_slug`/);
   assert.match(layout, /openGraph/);
   assert.match(layout, /summary_large_image/);
   assert.match(data, /Inspeção visual indisponível/);
